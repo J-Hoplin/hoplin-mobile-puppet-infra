@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MdScreenShare, MdTerminal, MdArticle, MdArrowBack, MdCircle } from 'react-icons/md';
+import { MdScreenShare, MdTerminal, MdArticle, MdArrowBack, MdCircle, MdFolder } from 'react-icons/md';
 import {
   RemoteScreen,
   MetricsPanel,
   LogViewer,
   AdbShell,
+  FileExplorer,
 } from '@remote-puppet/web-sdk/react';
 import { useRemoteDevice } from '@remote-puppet/web-sdk/react';
 import { useAuthStore } from '../store/authStore';
@@ -28,6 +29,10 @@ export const ControlPage: React.FC = () => {
     shellOutput,
     appList,
     selectedLogPackage,
+    files,
+    currentPath,
+    isLoadingFiles,
+    fileTransfers,
     connect,
     disconnect,
     joinSession,
@@ -45,6 +50,13 @@ export const ControlPage: React.FC = () => {
     startLogs,
     stopLogs,
     setLogPackage,
+    requestFileList,
+    downloadFile,
+    uploadFile,
+    deleteFile,
+    createDirectory,
+    cancelTransfer,
+    removeFileTransfer,
   } = useRemoteDevice({
     serverUrl,
     token: token!,
@@ -88,6 +100,34 @@ export const ControlPage: React.FC = () => {
       setIsLogsStarted(false);
     }
   }, [activeTab, isLogsStarted, stopLogs]);
+
+  // Request file list when Files tab is activated and WebRTC is connected
+  useEffect(() => {
+    if (activeTab === 'files' && webrtcState === 'connected') {
+      // Use device's external storage path, fallback to root
+      const defaultPath = metrics?.deviceInfo?.externalStoragePath || '/';
+      const path = (!currentPath || currentPath === '/') ? defaultPath : currentPath;
+      requestFileList(path);
+    }
+  }, [activeTab, webrtcState, metrics?.deviceInfo?.externalStoragePath]);
+
+  // Auto-refresh file list when upload completes
+  const prevTransfersRef = React.useRef(fileTransfers);
+  useEffect(() => {
+    const prevTransfers = prevTransfersRef.current;
+    // Check if any upload transfer just completed
+    const newlyCompleted = fileTransfers.filter(
+      (t) =>
+        t.status === 'completed' &&
+        t.direction === 'upload' &&
+        prevTransfers.find((p) => p.id === t.id)?.status === 'transferring'
+    );
+    if (newlyCompleted.length > 0 && activeTab === 'files') {
+      // Refresh file list after upload completes
+      setTimeout(() => requestFileList(currentPath), 300);
+    }
+    prevTransfersRef.current = fileTransfers;
+  }, [fileTransfers, activeTab, currentPath, requestFileList]);
 
   const handleAppChange = useCallback((packageName: string) => {
     setLogPackage(packageName);
@@ -202,6 +242,13 @@ export const ControlPage: React.FC = () => {
           icon={<MdArticle size={16} />}
         >
           Logs
+        </TabButton>
+        <TabButton
+          active={activeTab === 'files'}
+          onClick={() => setActiveTab('files')}
+          icon={<MdFolder size={16} />}
+        >
+          Files
         </TabButton>
       </div>
 
@@ -365,6 +412,42 @@ export const ControlPage: React.FC = () => {
                 maxHeight="100%"
               />
             </div>
+          </div>
+        )}
+
+        {activeTab === 'files' && (
+          <div
+            className="card"
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            <FileExplorer
+              files={files}
+              currentPath={currentPath}
+              transfers={fileTransfers}
+              isLoading={isLoadingFiles}
+              onNavigate={requestFileList}
+              onDownload={(file) => downloadFile(file.path, file.name)}
+              onUpload={(path, fileName, data) => uploadFile(path, fileName, data)}
+              onDelete={(file) => {
+                if (confirm(`Delete "${file.name}"?`)) {
+                  deleteFile(file.path);
+                  setTimeout(() => requestFileList(currentPath), 500);
+                }
+              }}
+              onCreateDirectory={createDirectory}
+              onCancelTransfer={cancelTransfer}
+              onRemoveTransfer={removeFileTransfer}
+              style={{
+                height: '100%',
+                background: 'var(--bg-secondary)',
+                borderRadius: '12px',
+              }}
+            />
           </div>
         )}
       </div>

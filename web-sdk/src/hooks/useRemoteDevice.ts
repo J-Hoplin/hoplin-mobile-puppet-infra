@@ -27,7 +27,20 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     client.on('onLog', store.addLog);
     client.on('onLogs', store.addLogs);
     client.on('onAppList', store.setAppList);
-    client.on('onFileList', store.setFiles);
+    client.on('onFileList', (files, path) => {
+      store.setFiles(files);
+      store.setCurrentPath(path);
+    });
+    client.on('onFileTransferStart', store.addFileTransfer);
+    client.on('onFileTransferProgress', (id, transferredBytes, speed) => {
+      store.updateFileTransfer(id, { transferredBytes, speed, status: 'transferring' });
+    });
+    client.on('onFileTransferComplete', (id) => {
+      store.updateFileTransfer(id, { status: 'completed' });
+    });
+    client.on('onFileTransferError', (id, error) => {
+      store.updateFileTransfer(id, { status: 'error', error });
+    });
     client.on('onError', store.setError);
     client.on('onShellOutput', (data: string) => {
       store.addShellOutput(data + '\n');
@@ -110,8 +123,29 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
   }, []);
 
   const requestFileList = useCallback((path: string) => {
-    store.setCurrentPath(path);
+    store.setIsLoadingFiles(true);
     return clientRef.current?.requestFileList(path) ?? false;
+  }, []);
+
+  const downloadFile = useCallback((path: string, fileName: string) => {
+    return clientRef.current?.downloadFile(path, fileName) ?? null;
+  }, []);
+
+  const uploadFile = useCallback((path: string, fileName: string, fileData: ArrayBuffer) => {
+    return clientRef.current?.uploadFile(path, fileName, fileData) ?? null;
+  }, []);
+
+  const deleteFile = useCallback((path: string) => {
+    return clientRef.current?.deleteFile(path) ?? false;
+  }, []);
+
+  const createDirectory = useCallback((path: string) => {
+    return clientRef.current?.createDirectory(path) ?? false;
+  }, []);
+
+  const cancelTransfer = useCallback((transferId: string) => {
+    clientRef.current?.cancelTransfer(transferId);
+    store.removeFileTransfer(transferId);
   }, []);
 
   const getStats = useCallback(async () => {
@@ -152,6 +186,8 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     selectedLogPackage: store.selectedLogPackage,
     files: store.files,
     currentPath: store.currentPath,
+    isLoadingFiles: store.isLoadingFiles,
+    fileTransfers: store.fileTransfers,
     stats: store.stats,
     error: store.error,
     shellOutput: store.shellOutput,
@@ -170,6 +206,13 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     sendRecent,
     sendShellCommand,
     requestFileList,
+    downloadFile,
+    uploadFile,
+    deleteFile,
+    createDirectory,
+    cancelTransfer,
+    removeFileTransfer: store.removeFileTransfer,
+    clearFileTransfers: store.clearFileTransfers,
     getStats,
     clearLogs: store.clearLogs,
     clearShellOutput: store.clearShellOutput,

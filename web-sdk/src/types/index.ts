@@ -60,6 +60,7 @@ export interface DeviceInfo {
   apiLevel?: number;
   hardware?: string;
   product?: string;
+  externalStoragePath?: string;
 }
 
 export interface MetricsData {
@@ -90,6 +91,22 @@ export interface FileInfo {
   size: number;
   modifiedAt: number;
   permissions: string;
+}
+
+export type TransferStatus = 'pending' | 'transferring' | 'completed' | 'error' | 'cancelled';
+export type TransferDirection = 'download' | 'upload';
+
+export interface FileTransfer {
+  id: string;
+  fileName: string;
+  filePath: string;
+  direction: TransferDirection;
+  status: TransferStatus;
+  totalBytes: number;
+  transferredBytes: number;
+  speed: number; // bytes per second
+  startTime: number;
+  error?: string;
 }
 
 export interface LogEntry {

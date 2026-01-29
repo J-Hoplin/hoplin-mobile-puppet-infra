@@ -7,6 +7,7 @@ import type {
   FileInfo,
   WebRTCStats,
   AppInfo,
+  FileTransfer,
 } from '../types';
 
 export interface RemotePuppetStore {
@@ -21,9 +22,11 @@ export interface RemotePuppetStore {
   selectedLogPackage: string;
   files: FileInfo[];
   currentPath: string;
+  isLoadingFiles: boolean;
   stats: WebRTCStats | null;
   error: string | null;
   shellOutput: string;
+  fileTransfers: FileTransfer[];
 
   setConnectionState: (state: ConnectionState) => void;
   setWebRTCState: (state: RTCPeerConnectionState | null) => void;
@@ -38,10 +41,15 @@ export interface RemotePuppetStore {
   setSelectedLogPackage: (packageName: string) => void;
   setFiles: (files: FileInfo[]) => void;
   setCurrentPath: (path: string) => void;
+  setIsLoadingFiles: (loading: boolean) => void;
   setStats: (stats: WebRTCStats | null) => void;
   setError: (error: string | null) => void;
   addShellOutput: (output: string) => void;
   clearShellOutput: () => void;
+  addFileTransfer: (transfer: FileTransfer) => void;
+  updateFileTransfer: (id: string, updates: Partial<FileTransfer>) => void;
+  removeFileTransfer: (id: string) => void;
+  clearFileTransfers: () => void;
   reset: () => void;
 }
 
@@ -59,9 +67,11 @@ export const useRemotePuppetStore = create<RemotePuppetStore>((set) => ({
   selectedLogPackage: '',
   files: [],
   currentPath: '/',
+  isLoadingFiles: false,
   stats: null,
   error: null,
   shellOutput: '',
+  fileTransfers: [],
 
   setConnectionState: (state) => set({ connectionState: state }),
   setWebRTCState: (state) => set({ webrtcState: state }),
@@ -80,8 +90,9 @@ export const useRemotePuppetStore = create<RemotePuppetStore>((set) => ({
   clearLogs: () => set({ logs: [] }),
   setAppList: (apps) => set({ appList: apps }),
   setSelectedLogPackage: (packageName) => set({ selectedLogPackage: packageName }),
-  setFiles: (files) => set({ files }),
+  setFiles: (files) => set({ files, isLoadingFiles: false }),
   setCurrentPath: (path) => set({ currentPath: path }),
+  setIsLoadingFiles: (loading) => set({ isLoadingFiles: loading }),
   setStats: (stats) => set({ stats }),
   setError: (error) => set({ error }),
   addShellOutput: (output) =>
@@ -89,6 +100,21 @@ export const useRemotePuppetStore = create<RemotePuppetStore>((set) => ({
       shellOutput: state.shellOutput + output,
     })),
   clearShellOutput: () => set({ shellOutput: '' }),
+  addFileTransfer: (transfer) =>
+    set((state) => ({
+      fileTransfers: [...state.fileTransfers, transfer],
+    })),
+  updateFileTransfer: (id, updates) =>
+    set((state) => ({
+      fileTransfers: state.fileTransfers.map((t) =>
+        t.id === id ? { ...t, ...updates } : t
+      ),
+    })),
+  removeFileTransfer: (id) =>
+    set((state) => ({
+      fileTransfers: state.fileTransfers.filter((t) => t.id !== id),
+    })),
+  clearFileTransfers: () => set({ fileTransfers: [] }),
   reset: () =>
     set({
       connectionState: 'disconnected',
@@ -101,8 +127,10 @@ export const useRemotePuppetStore = create<RemotePuppetStore>((set) => ({
       selectedLogPackage: '',
       files: [],
       currentPath: '/',
+      isLoadingFiles: false,
       stats: null,
       error: null,
       shellOutput: '',
+      fileTransfers: [],
     }),
 }));
