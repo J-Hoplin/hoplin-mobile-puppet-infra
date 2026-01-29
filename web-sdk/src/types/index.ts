@@ -50,7 +50,20 @@ export interface KeyEvent {
 
 export type ControlEvent = TouchEvent | KeyEvent | { type: 'back' | 'home' | 'recent' };
 
+export interface DeviceInfo {
+  deviceName?: string;
+  serialNumber?: string;
+  model?: string;
+  manufacturer?: string;
+  cpuAbi?: string;
+  androidVersion?: string;
+  apiLevel?: number;
+  hardware?: string;
+  product?: string;
+}
+
 export interface MetricsData {
+  deviceInfo?: DeviceInfo;
   totalCpuPercent: number;
   totalMemoryBytes: number;
   availableMemoryBytes: number;

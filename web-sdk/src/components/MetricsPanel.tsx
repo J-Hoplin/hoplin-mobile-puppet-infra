@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { MetricsData, ProcessInfo } from '../types';
+import type { MetricsData, ProcessInfo, DeviceInfo } from '../types';
 
 export interface MetricsPanelProps {
   metrics: MetricsData | null;
@@ -392,6 +392,115 @@ const TempIcon = () => (
   </svg>
 );
 
+const PhoneIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="2" width="14" height="20" rx="2" />
+    <path d="M12 18h.01" />
+  </svg>
+);
+
+// Device Info Card Component
+const DeviceInfoCard: React.FC<{ deviceInfo?: DeviceInfo }> = ({ deviceInfo }) => {
+  const getValue = (value?: string | number): string => value?.toString() ?? '-';
+
+  return (
+    <div style={{
+      padding: '14px',
+      background: 'linear-gradient(135deg, rgba(0, 212, 170, 0.08) 0%, rgba(168, 85, 247, 0.05) 100%)',
+      borderRadius: '12px',
+      border: '1px solid rgba(0, 212, 170, 0.2)',
+    }}>
+      {/* Device Name Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        marginBottom: '12px',
+        paddingBottom: '10px',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+      }}>
+        <div style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '8px',
+          background: 'linear-gradient(135deg, #00d4aa 0%, #00b894 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          boxShadow: '0 2px 8px rgba(0, 212, 170, 0.3)',
+        }}>
+          <PhoneIcon />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#ffffff',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {getValue(deviceInfo?.deviceName)}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#9090a0',
+          }}>
+            {getValue(deviceInfo?.manufacturer)} {getValue(deviceInfo?.model)}
+          </div>
+        </div>
+      </div>
+
+      {/* Device Details Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '8px',
+      }}>
+        <DeviceInfoRow label="Serial" value={getValue(deviceInfo?.serialNumber)} mono />
+        <DeviceInfoRow
+          label="Android"
+          value={deviceInfo?.androidVersion
+            ? `${deviceInfo.androidVersion} (API ${deviceInfo.apiLevel ?? '-'})`
+            : '-'}
+        />
+        <DeviceInfoRow label="Model" value={getValue(deviceInfo?.model)} />
+        <DeviceInfoRow label="CPU" value={getValue(deviceInfo?.cpuAbi)} />
+      </div>
+    </div>
+  );
+};
+
+// Device Info Row Component
+const DeviceInfoRow: React.FC<{
+  label: string;
+  value: string;
+  mono?: boolean;
+}> = ({ label, value, mono }) => (
+  <div style={{ minWidth: 0 }}>
+    <div style={{
+      fontSize: '9px',
+      color: '#707080',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      marginBottom: '2px',
+    }}>
+      {label}
+    </div>
+    <div style={{
+      fontSize: '11px',
+      color: '#d0d0e0',
+      fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    }}>
+      {value}
+    </div>
+  </div>
+);
+
 export const MetricsPanel: React.FC<MetricsPanelProps> = ({
   metrics,
   className,
@@ -440,6 +549,9 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
           50% { opacity: 0.6; transform: scale(1.02); }
         }
       `}</style>
+
+      {/* Device Info */}
+      <DeviceInfoCard deviceInfo={metrics.deviceInfo} />
 
       {/* Circular Gauges */}
       <div style={{
