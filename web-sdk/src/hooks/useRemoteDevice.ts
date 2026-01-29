@@ -25,8 +25,13 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     client.on('onStream', store.setStream);
     client.on('onMetrics', store.setMetrics);
     client.on('onLog', store.addLog);
+    client.on('onLogs', store.addLogs);
+    client.on('onAppList', store.setAppList);
     client.on('onFileList', store.setFiles);
     client.on('onError', store.setError);
+    client.on('onShellOutput', (data: string) => {
+      store.addShellOutput(data + '\n');
+    });
 
     clientRef.current = client;
 
@@ -117,6 +122,24 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     return stats;
   }, []);
 
+  // Log methods
+  const requestAppList = useCallback(() => {
+    return clientRef.current?.requestAppList() ?? false;
+  }, []);
+
+  const startLogs = useCallback((packageName?: string) => {
+    return clientRef.current?.startLogs(packageName) ?? false;
+  }, []);
+
+  const stopLogs = useCallback(() => {
+    return clientRef.current?.stopLogs() ?? false;
+  }, []);
+
+  const setLogPackage = useCallback((packageName: string) => {
+    store.setSelectedLogPackage(packageName);
+    return clientRef.current?.setLogPackage(packageName) ?? false;
+  }, []);
+
   return {
     connectionState: store.connectionState,
     webrtcState: store.webrtcState,
@@ -125,10 +148,13 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     stream: store.stream,
     metrics: store.metrics,
     logs: store.logs,
+    appList: store.appList,
+    selectedLogPackage: store.selectedLogPackage,
     files: store.files,
     currentPath: store.currentPath,
     stats: store.stats,
     error: store.error,
+    shellOutput: store.shellOutput,
 
     connect,
     disconnect,
@@ -146,6 +172,14 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     requestFileList,
     getStats,
     clearLogs: store.clearLogs,
+    clearShellOutput: store.clearShellOutput,
+    addShellOutput: store.addShellOutput,
     clearError: () => store.setError(null),
+
+    // Log methods
+    requestAppList,
+    startLogs,
+    stopLogs,
+    setLogPackage,
   };
 }

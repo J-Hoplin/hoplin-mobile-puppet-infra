@@ -9,6 +9,7 @@ import type {
   LogEntry,
   FileInfo,
   WebRTCStats,
+  AppInfo,
 } from '../types';
 
 export interface RemotePuppetEvents {
@@ -17,6 +18,8 @@ export interface RemotePuppetEvents {
   onStream: (stream: MediaStream) => void;
   onMetrics: (data: MetricsData) => void;
   onLog: (entry: LogEntry) => void;
+  onLogs: (entries: LogEntry[]) => void;
+  onAppList: (apps: AppInfo[]) => void;
   onFileList: (files: FileInfo[]) => void;
   onShellOutput: (data: string, isStderr: boolean) => void;
   onError: (error: string) => void;
@@ -169,6 +172,35 @@ export class RemotePuppetClient {
     );
   }
 
+  // Log methods
+  requestAppList(): boolean {
+    return this.webrtc.sendData(
+      'logs',
+      JSON.stringify({ action: 'getApps' })
+    );
+  }
+
+  startLogs(packageName?: string): boolean {
+    return this.webrtc.sendData(
+      'logs',
+      JSON.stringify({ action: 'start', packageName: packageName || '' })
+    );
+  }
+
+  stopLogs(): boolean {
+    return this.webrtc.sendData(
+      'logs',
+      JSON.stringify({ action: 'stop' })
+    );
+  }
+
+  setLogPackage(packageName: string): boolean {
+    return this.webrtc.sendData(
+      'logs',
+      JSON.stringify({ action: 'setPackage', packageName })
+    );
+  }
+
   getStream(): MediaStream | null {
     return this.webrtc.getRemoteStream();
   }
@@ -233,7 +265,16 @@ export class RemotePuppetClient {
           this.events.onMetrics?.(parsed as MetricsData);
           break;
         case 'logs':
-          this.events.onLog?.(parsed as LogEntry);
+          if (parsed.type === 'appList' && parsed.apps) {
+            console.log('[RemotePuppet] App list received:', parsed.apps);
+            this.events.onAppList?.(parsed.apps as AppInfo[]);
+          } else if (parsed.type === 'logs' && parsed.logs) {
+            console.log('[RemotePuppet] Logs received:', parsed.logs.length, 'entries');
+            this.events.onLogs?.(parsed.logs as LogEntry[]);
+          } else {
+            // Legacy single log entry
+            this.events.onLog?.(parsed as LogEntry);
+          }
           break;
         case 'file':
           if (parsed.files) {

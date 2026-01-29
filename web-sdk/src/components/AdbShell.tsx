@@ -112,7 +112,8 @@ export const AdbShell: React.FC<AdbShellProps> = ({
         ref={outputRef}
         style={{
           flex: 1,
-          maxHeight,
+          minHeight: 0,
+          maxHeight: maxHeight === 'none' ? undefined : maxHeight,
           overflowY: 'auto',
           padding: '12px',
           color: '#d4d4d4',

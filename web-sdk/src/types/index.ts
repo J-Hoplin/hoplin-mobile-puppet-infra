@@ -88,6 +88,12 @@ export interface LogEntry {
   packageName?: string;
 }
 
+export interface AppInfo {
+  packageName: string;
+  appName: string;
+  isDefault?: boolean;
+}
+
 export interface LogFilter {
   levels?: LogEntry['level'][];
   tags?: string[];

@@ -12,12 +12,21 @@ export interface LogViewerProps {
 }
 
 const LOG_LEVEL_COLORS: Record<LogEntry['level'], string> = {
-  verbose: '#9E9E9E',
-  debug: '#2196F3',
-  info: '#4CAF50',
-  warn: '#FF9800',
-  error: '#F44336',
-  fatal: '#9C27B0',
+  verbose: '#8b8b8b',
+  debug: '#5ba8ff',
+  info: '#00d4aa',
+  warn: '#ffb347',
+  error: '#ff6b6b',
+  fatal: '#e066ff',
+};
+
+const LOG_LEVEL_BG: Record<LogEntry['level'], string> = {
+  verbose: 'transparent',
+  debug: 'transparent',
+  info: 'transparent',
+  warn: 'rgba(255, 179, 71, 0.08)',
+  error: 'rgba(255, 107, 107, 0.12)',
+  fatal: 'rgba(224, 102, 255, 0.15)',
 };
 
 const LOG_LEVEL_LABELS: Record<LogEntry['level'], string> = {
@@ -45,32 +54,51 @@ const LogRow: React.FC<{ entry: LogEntry }> = ({ entry }) => (
   <div
     style={{
       display: 'flex',
-      gap: '8px',
-      padding: '2px 8px',
-      fontFamily: 'monospace',
+      gap: '12px',
+      padding: '6px 12px',
+      fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
       fontSize: '12px',
-      borderBottom: '1px solid #eee',
-      backgroundColor: entry.level === 'error' || entry.level === 'fatal'
-        ? 'rgba(244, 67, 54, 0.1)'
-        : 'transparent',
+      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+      backgroundColor: LOG_LEVEL_BG[entry.level],
+      transition: 'background-color 0.15s ease',
     }}
   >
-    <span style={{ color: '#666', minWidth: '90px' }}>
+    <span style={{
+      color: '#6b6b7b',
+      minWidth: '85px',
+      fontVariantNumeric: 'tabular-nums',
+    }}>
       {formatTimestamp(entry.timestamp)}
     </span>
     <span
       style={{
         color: LOG_LEVEL_COLORS[entry.level],
-        fontWeight: 'bold',
-        minWidth: '16px',
+        fontWeight: 600,
+        minWidth: '14px',
+        textShadow: entry.level === 'error' || entry.level === 'fatal'
+          ? `0 0 8px ${LOG_LEVEL_COLORS[entry.level]}40`
+          : 'none',
       }}
     >
       {LOG_LEVEL_LABELS[entry.level]}
     </span>
-    <span style={{ color: '#9C27B0', minWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+    <span style={{
+      color: '#a78bfa',
+      minWidth: '120px',
+      maxWidth: '120px',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }}>
       {entry.tag}
     </span>
-    <span style={{ flex: 1, wordBreak: 'break-all' }}>{entry.message}</span>
+    <span style={{
+      flex: 1,
+      wordBreak: 'break-all',
+      color: '#e0e0e8',
+    }}>
+      {entry.message}
+    </span>
   </div>
 );
 
@@ -135,21 +163,22 @@ export const LogViewer: React.FC<LogViewerProps> = ({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#fff',
-        borderRadius: '8px',
-        border: '1px solid #ddd',
+        backgroundColor: '#12121a',
+        borderRadius: '12px',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
         overflow: 'hidden',
         ...style,
       }}
     >
+      {/* Filter Bar */}
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '8px',
-          padding: '8px',
-          borderBottom: '1px solid #ddd',
-          backgroundColor: '#f5f5f5',
+          gap: '12px',
+          padding: '12px 16px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#16161f',
         }}
       >
         <input
@@ -159,29 +188,50 @@ export const LogViewer: React.FC<LogViewerProps> = ({
           onChange={handleSearchChange}
           style={{
             flex: 1,
-            minWidth: '150px',
-            padding: '4px 8px',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            fontSize: '12px',
+            minWidth: '180px',
+            padding: '8px 14px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '8px',
+            fontSize: '13px',
+            backgroundColor: '#0d0d12',
+            color: '#e0e0e8',
+            outline: 'none',
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = 'rgba(0, 212, 170, 0.5)';
+            e.target.style.boxShadow = '0 0 0 3px rgba(0, 212, 170, 0.1)';
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            e.target.style.boxShadow = 'none';
           }}
         />
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div style={{ display: 'flex', gap: '6px' }}>
           {(Object.keys(LOG_LEVEL_COLORS) as LogEntry['level'][]).map((level) => (
             <button
               key={level}
               onClick={() => toggleLevel(level)}
               style={{
-                padding: '4px 8px',
-                fontSize: '10px',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: 600,
                 border: '1px solid',
-                borderColor: LOG_LEVEL_COLORS[level],
-                borderRadius: '4px',
-                backgroundColor: selectedLevels.has(level)
+                borderColor: selectedLevels.has(level)
                   ? LOG_LEVEL_COLORS[level]
+                  : 'rgba(255, 255, 255, 0.15)',
+                borderRadius: '6px',
+                backgroundColor: selectedLevels.has(level)
+                  ? `${LOG_LEVEL_COLORS[level]}25`
                   : 'transparent',
-                color: selectedLevels.has(level) ? '#fff' : LOG_LEVEL_COLORS[level],
+                color: selectedLevels.has(level)
+                  ? LOG_LEVEL_COLORS[level]
+                  : '#6b6b7b',
                 cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                textShadow: selectedLevels.has(level)
+                  ? `0 0 8px ${LOG_LEVEL_COLORS[level]}40`
+                  : 'none',
               }}
             >
               {LOG_LEVEL_LABELS[level]}
@@ -190,25 +240,35 @@ export const LogViewer: React.FC<LogViewerProps> = ({
         </div>
       </div>
 
+      {/* Log Content */}
       <div
         ref={containerRef}
         style={{
           flex: 1,
-          maxHeight,
+          maxHeight: maxHeight === '100%' ? 'none' : maxHeight,
           overflowY: 'auto',
-          backgroundColor: '#fafafa',
+          backgroundColor: '#0d0d12',
         }}
       >
         {filteredLogs.length === 0 ? (
           <div
             style={{
-              padding: '16px',
+              padding: '48px 16px',
               textAlign: 'center',
-              color: '#666',
-              fontSize: '12px',
+              color: '#6b6b7b',
+              fontSize: '13px',
             }}
           >
-            No logs to display
+            <div style={{
+              fontSize: '32px',
+              marginBottom: '12px',
+              opacity: 0.5,
+            }}>
+              📋
+            </div>
+            {logs.length === 0
+              ? 'Waiting for logs...'
+              : 'No logs match the current filter'}
           </div>
         ) : (
           filteredLogs.map((entry, index) => (
@@ -217,16 +277,35 @@ export const LogViewer: React.FC<LogViewerProps> = ({
         )}
       </div>
 
+      {/* Footer */}
       <div
         style={{
-          padding: '4px 8px',
-          borderTop: '1px solid #ddd',
-          backgroundColor: '#f5f5f5',
-          fontSize: '10px',
-          color: '#666',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '8px 16px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#16161f',
+          fontSize: '11px',
+          color: '#6b6b7b',
         }}
       >
-        {filteredLogs.length} / {logs.length} entries
+        <span>
+          {filteredLogs.length === logs.length
+            ? `${logs.length} entries`
+            : `${filteredLogs.length} / ${logs.length} entries`}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: '#00d4aa',
+            boxShadow: '0 0 6px rgba(0, 212, 170, 0.5)',
+            animation: 'pulse 2s ease-in-out infinite',
+          }} />
+          Live
+        </span>
       </div>
     </div>
   );

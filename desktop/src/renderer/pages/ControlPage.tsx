@@ -18,7 +18,6 @@ export const ControlPage: React.FC = () => {
   const { token, serverUrl } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('screen');
-  const [shellOutput, setShellOutput] = useState('');
 
   const {
     connectionState,
@@ -26,6 +25,9 @@ export const ControlPage: React.FC = () => {
     stream,
     metrics,
     logs,
+    shellOutput,
+    appList,
+    selectedLogPackage,
     connect,
     disconnect,
     joinSession,
@@ -38,11 +40,18 @@ export const ControlPage: React.FC = () => {
     sendRecent,
     sendShellCommand,
     clearLogs,
+    addShellOutput,
+    requestAppList,
+    startLogs,
+    stopLogs,
+    setLogPackage,
   } = useRemoteDevice({
     serverUrl,
     token: token!,
     autoConnect: false,
   });
+
+  const [isLogsStarted, setIsLogsStarted] = useState(false);
 
   useEffect(() => {
     if (deviceId && token) {
@@ -60,6 +69,31 @@ export const ControlPage: React.FC = () => {
     }
   }, [connectionState, deviceId]);
 
+  // Request app list when Logs tab is activated and WebRTC is connected
+  useEffect(() => {
+    if (activeTab === 'logs' && webrtcState === 'connected') {
+      requestAppList();
+      if (!isLogsStarted) {
+        // Start logs with default (agent app)
+        startLogs();
+        setIsLogsStarted(true);
+      }
+    }
+  }, [activeTab, webrtcState, isLogsStarted, requestAppList, startLogs]);
+
+  // Stop logs when leaving Logs tab
+  useEffect(() => {
+    if (activeTab !== 'logs' && isLogsStarted) {
+      stopLogs();
+      setIsLogsStarted(false);
+    }
+  }, [activeTab, isLogsStarted, stopLogs]);
+
+  const handleAppChange = useCallback((packageName: string) => {
+    setLogPackage(packageName);
+    clearLogs();
+  }, [setLogPackage, clearLogs]);
+
   const handleDisconnect = useCallback(() => {
     leaveSession();
     navigate('/devices');
@@ -67,10 +101,10 @@ export const ControlPage: React.FC = () => {
 
   const handleShellCommand = useCallback(
     (command: string) => {
-      setShellOutput((prev) => prev + `$ ${command}\n`);
+      addShellOutput(`$ ${command}\n`);
       sendShellCommand(command);
     },
-    [sendShellCommand]
+    [sendShellCommand, addShellOutput]
   );
 
   const isStreaming = connectionState === 'connected' && webrtcState === 'connected';
@@ -242,39 +276,18 @@ export const ControlPage: React.FC = () => {
               overflow: 'hidden',
             }}
           >
-            <div
-              className="card-header"
+            <AdbShell
+              output={shellOutput}
+              onCommand={handleShellCommand}
+              maxHeight="none"
               style={{
+                height: '100%',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: 'column',
+                background: 'var(--bg-primary)',
+                borderRadius: '12px',
               }}
-            >
-              <span>ADB Shell</span>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                <MdCircle size={6} style={{ color: 'var(--success)' }} />
-                Connected
-              </div>
-            </div>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <AdbShell
-                output={shellOutput}
-                onCommand={handleShellCommand}
-                style={{
-                  height: '100%',
-                  background: 'var(--bg-primary)',
-                  borderRadius: '0 0 12px 12px',
-                }}
-              />
-            </div>
+            />
           </div>
         )}
 
@@ -294,16 +307,51 @@ export const ControlPage: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                gap: '16px',
               }}
             >
-              <span>System Logs</span>
-              <button
-                className="btn btn-ghost"
-                style={{ padding: '4px 12px', fontSize: '12px' }}
-                onClick={clearLogs}
-              >
-                Clear
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span>Application Logs</span>
+                <select
+                  value={selectedLogPackage}
+                  onChange={(e) => handleAppChange(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    minWidth: '200px',
+                  }}
+                >
+                  {appList.length === 0 ? (
+                    <option value="">Loading apps...</option>
+                  ) : (
+                    appList.map((app) => (
+                      <option key={app.packageName} value={app.packageName}>
+                        {app.appName} {app.isDefault ? '(Agent)' : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontSize: '12px',
+                  color: 'var(--text-muted)',
+                }}>
+                  {logs.length} entries
+                </span>
+                <button
+                  className="btn btn-ghost"
+                  style={{ padding: '4px 12px', fontSize: '12px' }}
+                  onClick={clearLogs}
+                >
+                  Clear
+                </button>
+              </div>
             </div>
             <div style={{ flex: 1, overflow: 'hidden', padding: '12px' }}>
               <LogViewer
