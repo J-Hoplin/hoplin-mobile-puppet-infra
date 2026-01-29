@@ -224,10 +224,12 @@ export class RemotePuppetClient {
   private handleDataChannelMessage(channel: string, data: ArrayBuffer | string): void {
     try {
       const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
+      console.log(`[RemotePuppet] DataChannel message received: channel=${channel}, data=${str.substring(0, 200)}`);
       const parsed = JSON.parse(str);
 
       switch (channel) {
         case 'metrics':
+          console.log('[RemotePuppet] Metrics received:', parsed);
           this.events.onMetrics?.(parsed as MetricsData);
           break;
         case 'logs':

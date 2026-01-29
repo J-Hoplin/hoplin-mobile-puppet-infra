@@ -204,9 +204,21 @@ export const ControlPage: React.FC = () => {
                 width: '320px',
                 flexShrink: 0,
                 overflow: 'auto',
+                background: 'var(--bg-secondary)',
               }}
             >
-              <div className="card-header">
+              <div className="card-header" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: metrics ? 'var(--success)' : 'var(--text-muted)',
+                  boxShadow: metrics ? '0 0 8px var(--success)' : 'none',
+                }} />
                 <span>System Metrics</span>
               </div>
               <div className="card-body" style={{ padding: '16px' }}>
