@@ -1,0 +1,14 @@
+{
+  "name": "@remote-puppet/proto",
+  "version": "1.0.0",
+  "description": "Protocol Buffers definitions for Remote Puppet",
+  "scripts": {
+    "generate": "npm run generate:ts && npm run generate:kotlin",
+    "generate:ts": "protoc --plugin=protoc-gen-ts=./node_modules/.bin/protoc-gen-ts --ts_out=./generated/ts --proto_path=. remote_puppet.proto",
+    "generate:kotlin": "echo 'Run from Android Studio or use buf'"
+  },
+  "devDependencies": {
+    "protobufjs": "^7.2.5",
+    "ts-proto": "^1.165.0"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "remote-puppet",
+  "version": "1.0.0",
+  "description": "WebRTC-based remote Android device control system",
+  "private": true,
+  "workspaces": [
+    "server",
+    "web-sdk",
+    "desktop"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,desktop -c blue,green \"yarn workspace @remote-puppet/server dev\" \"yarn workspace @remote-puppet/desktop electron:dev\"",
+    "dev:server": "yarn workspace @remote-puppet/server dev",
+    "dev:sdk": "yarn workspace @remote-puppet/web-sdk dev",
+    "dev:desktop": "yarn workspace @remote-puppet/desktop electron:dev",
+    "build": "yarn build:sdk && yarn build:server && yarn build:desktop",
+    "build:server": "yarn workspace @remote-puppet/server build",
+    "build:sdk": "yarn workspace @remote-puppet/web-sdk build",
+    "build:desktop": "yarn workspace @remote-puppet/desktop build",
+    "lint": "yarn workspaces run lint",
+    "test": "yarn workspace @remote-puppet/server test",
+    "db:migrate": "yarn workspace @remote-puppet/server prisma:migrate",
+    "db:generate": "yarn workspace @remote-puppet/server prisma:generate",
+    "db:studio": "yarn workspace @remote-puppet/server exec prisma studio",
+    "docker:dev": "docker-compose -f docker/docker-compose.dev.yml up -d",
+    "docker:dev:down": "docker-compose -f docker/docker-compose.dev.yml down",
+    "docker:up": "docker-compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f docker/docker-compose.yml down",
+    "docker:logs": "docker-compose -f docker/docker-compose.dev.yml logs -f",
+    "clean": "rm -rf node_modules server/node_modules web-sdk/node_modules desktop/node_modules server/dist web-sdk/dist desktop/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}

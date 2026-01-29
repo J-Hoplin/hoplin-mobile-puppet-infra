@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  BUSY
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  devices   Device[]
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Device {
+  id             String       @id @default(uuid())
+  name           String
+  authCode       String       @unique
+  status         DeviceStatus @default(OFFLINE)
+  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId        String
+  sessions       Session[]
+  capabilities   Json?
+  lastSeenAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([ownerId])
+  @@index([authCode])
+  @@index([status])
+}
+
+model Session {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  device    Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceId  String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([deviceId])
+}

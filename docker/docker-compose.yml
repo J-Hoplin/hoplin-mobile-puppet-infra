@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ../server
+      dockerfile: ../docker/Dockerfile.server
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/remote_puppet?schema=public
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_EXPIRES_IN=7d
+      - PORT=3000
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:5174
+      - TURN_SERVER_URL=turn:turn:3478
+      - TURN_SERVER_USERNAME=turnuser
+      - TURN_SERVER_CREDENTIAL=${TURN_CREDENTIAL:-turnpassword}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - remote-puppet
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=remote_puppet
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - remote-puppet
+
+  turn:
+    image: coturn/coturn:latest
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "5349:5349/udp"
+      - "5349:5349/tcp"
+      - "49152-49200:49152-49200/udp"
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    restart: unless-stopped
+    networks:
+      - remote-puppet
+
+volumes:
+  pgdata:
+
+networks:
+  remote-puppet:
+    driver: bridge

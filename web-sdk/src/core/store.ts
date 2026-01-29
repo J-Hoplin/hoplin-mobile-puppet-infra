@@ -1,0 +1,82 @@
+import { create } from 'zustand';
+import type {
+  ConnectionState,
+  Device,
+  MetricsData,
+  LogEntry,
+  FileInfo,
+  WebRTCStats,
+} from '../types';
+
+export interface RemotePuppetStore {
+  connectionState: ConnectionState;
+  webrtcState: RTCPeerConnectionState | null;
+  devices: Device[];
+  currentDeviceId: string | null;
+  stream: MediaStream | null;
+  metrics: MetricsData | null;
+  logs: LogEntry[];
+  files: FileInfo[];
+  currentPath: string;
+  stats: WebRTCStats | null;
+  error: string | null;
+
+  setConnectionState: (state: ConnectionState) => void;
+  setWebRTCState: (state: RTCPeerConnectionState | null) => void;
+  setDevices: (devices: Device[]) => void;
+  setCurrentDeviceId: (deviceId: string | null) => void;
+  setStream: (stream: MediaStream | null) => void;
+  setMetrics: (metrics: MetricsData | null) => void;
+  addLog: (entry: LogEntry) => void;
+  clearLogs: () => void;
+  setFiles: (files: FileInfo[]) => void;
+  setCurrentPath: (path: string) => void;
+  setStats: (stats: WebRTCStats | null) => void;
+  setError: (error: string | null) => void;
+  reset: () => void;
+}
+
+const MAX_LOGS = 1000;
+
+export const useRemotePuppetStore = create<RemotePuppetStore>((set) => ({
+  connectionState: 'disconnected',
+  webrtcState: null,
+  devices: [],
+  currentDeviceId: null,
+  stream: null,
+  metrics: null,
+  logs: [],
+  files: [],
+  currentPath: '/',
+  stats: null,
+  error: null,
+
+  setConnectionState: (state) => set({ connectionState: state }),
+  setWebRTCState: (state) => set({ webrtcState: state }),
+  setDevices: (devices) => set({ devices }),
+  setCurrentDeviceId: (deviceId) => set({ currentDeviceId: deviceId }),
+  setStream: (stream) => set({ stream }),
+  setMetrics: (metrics) => set({ metrics }),
+  addLog: (entry) =>
+    set((state) => ({
+      logs: [...state.logs.slice(-MAX_LOGS + 1), entry],
+    })),
+  clearLogs: () => set({ logs: [] }),
+  setFiles: (files) => set({ files }),
+  setCurrentPath: (path) => set({ currentPath: path }),
+  setStats: (stats) => set({ stats }),
+  setError: (error) => set({ error }),
+  reset: () =>
+    set({
+      connectionState: 'disconnected',
+      webrtcState: null,
+      currentDeviceId: null,
+      stream: null,
+      metrics: null,
+      logs: [],
+      files: [],
+      currentPath: '/',
+      stats: null,
+      error: null,
+    }),
+}));

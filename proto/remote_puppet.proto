@@ -1,0 +1,240 @@
+syntax = "proto3";
+
+package remotepuppet;
+
+option java_package = "com.remotepuppet.proto";
+option java_multiple_files = true;
+
+// Touch event types
+enum TouchAction {
+  TOUCH_ACTION_DOWN = 0;
+  TOUCH_ACTION_UP = 1;
+  TOUCH_ACTION_MOVE = 2;
+  TOUCH_ACTION_CANCEL = 3;
+}
+
+// Touch event message
+message TouchEvent {
+  TouchAction action = 1;
+  float x = 2;              // Normalized coordinate 0.0 ~ 1.0
+  float y = 3;              // Normalized coordinate 0.0 ~ 1.0
+  int64 timestamp = 4;      // Unix timestamp in milliseconds
+  int32 pointer_id = 5;     // Multi-touch pointer ID
+  float pressure = 6;       // Touch pressure 0.0 ~ 1.0
+}
+
+// Key event types
+enum KeyAction {
+  KEY_ACTION_DOWN = 0;
+  KEY_ACTION_UP = 1;
+}
+
+// Key event message
+message KeyEvent {
+  KeyAction action = 1;
+  int32 key_code = 2;       // Android KeyEvent key code
+  int64 timestamp = 3;
+}
+
+// Control message wrapper
+message ControlMessage {
+  oneof message {
+    TouchEvent touch = 1;
+    KeyEvent key = 2;
+    string text_input = 3;  // Direct text input
+  }
+}
+
+// Process information
+message ProcessInfo {
+  int32 pid = 1;
+  string name = 2;
+  float cpu_percent = 3;
+  int64 memory_bytes = 4;
+  string user = 5;
+}
+
+// System metrics
+message MetricsData {
+  float total_cpu_percent = 1;
+  int64 total_memory_bytes = 2;
+  int64 available_memory_bytes = 3;
+  int64 used_memory_bytes = 4;
+  repeated ProcessInfo top_processes = 5;
+  float battery_level = 6;          // 0.0 ~ 1.0
+  bool is_charging = 7;
+  int32 temperature_celsius = 8;    // Device temperature
+  int64 timestamp = 9;
+}
+
+// File system operations
+enum FileOperation {
+  FILE_OP_LIST = 0;
+  FILE_OP_READ = 1;
+  FILE_OP_WRITE = 2;
+  FILE_OP_DELETE = 3;
+  FILE_OP_MKDIR = 4;
+  FILE_OP_RENAME = 5;
+  FILE_OP_COPY = 6;
+  FILE_OP_MOVE = 7;
+}
+
+message FileInfo {
+  string name = 1;
+  string path = 2;
+  bool is_directory = 3;
+  int64 size = 4;
+  int64 modified_at = 5;    // Unix timestamp
+  string permissions = 6;
+}
+
+message FileRequest {
+  FileOperation operation = 1;
+  string path = 2;
+  string destination = 3;   // For rename/copy/move
+  bytes data = 4;           // For write operations
+}
+
+message FileResponse {
+  bool success = 1;
+  string error = 2;
+  repeated FileInfo files = 3;  // For list operation
+  bytes data = 4;               // For read operation
+}
+
+// File transfer (chunked)
+message FileChunk {
+  string transfer_id = 1;
+  string file_path = 2;
+  int32 chunk_index = 3;
+  int32 total_chunks = 4;
+  bytes data = 5;
+  string checksum = 6;      // MD5 hash of chunk
+}
+
+message FileTransferStatus {
+  string transfer_id = 1;
+  bool success = 2;
+  string error = 3;
+  int32 chunks_received = 4;
+  int32 total_chunks = 5;
+}
+
+// Shell operations
+message ShellInput {
+  string session_id = 1;
+  string command = 2;
+}
+
+message ShellOutput {
+  string session_id = 1;
+  bytes data = 2;
+  bool is_stderr = 3;
+  int32 exit_code = 4;      // -1 if not exited
+}
+
+message ShellResize {
+  string session_id = 1;
+  int32 cols = 2;
+  int32 rows = 3;
+}
+
+// Log levels
+enum LogLevel {
+  LOG_VERBOSE = 0;
+  LOG_DEBUG = 1;
+  LOG_INFO = 2;
+  LOG_WARN = 3;
+  LOG_ERROR = 4;
+  LOG_FATAL = 5;
+}
+
+// Log entry
+message LogEntry {
+  LogLevel level = 1;
+  string tag = 2;
+  string message = 3;
+  int64 timestamp = 4;
+  int32 pid = 5;
+  string package_name = 6;
+}
+
+// Log filter
+message LogFilter {
+  repeated LogLevel levels = 1;
+  repeated string tags = 2;
+  repeated string packages = 3;
+  string search_text = 4;
+}
+
+// USB device information
+message UsbDevice {
+  int32 vendor_id = 1;
+  int32 product_id = 2;
+  string device_name = 3;
+  string manufacturer = 4;
+  string product = 5;
+  string serial_number = 6;
+  int32 device_class = 7;
+  int32 device_subclass = 8;
+}
+
+message UsbDeviceList {
+  repeated UsbDevice devices = 1;
+}
+
+// Device capabilities (sent during registration)
+message DeviceCapabilities {
+  bool has_shizuku = 1;
+  bool has_root = 2;
+  string android_version = 3;
+  int32 api_level = 4;
+  string device_model = 5;
+  string manufacturer = 6;
+  int32 screen_width = 7;
+  int32 screen_height = 8;
+  float screen_density = 9;
+}
+
+// Screen configuration
+message ScreenConfig {
+  int32 width = 1;
+  int32 height = 2;
+  int32 frame_rate = 3;
+  int32 bitrate = 4;        // in kbps
+}
+
+// Quality level for adaptive bitrate
+enum QualityLevel {
+  QUALITY_MIN = 0;      // 360p, 15fps, 500kbps
+  QUALITY_LOW = 1;      // 480p, 24fps, 1Mbps
+  QUALITY_MEDIUM = 2;   // 720p, 30fps, 2Mbps
+  QUALITY_HIGH = 3;     // 1080p, 30fps, 4Mbps
+}
+
+message QualityChange {
+  QualityLevel level = 1;
+  ScreenConfig config = 2;
+}
+
+// Wrapper for all DataChannel messages
+message DataChannelMessage {
+  int64 timestamp = 1;
+  string message_id = 2;
+
+  oneof payload {
+    ControlMessage control = 10;
+    MetricsData metrics = 11;
+    FileRequest file_request = 12;
+    FileResponse file_response = 13;
+    FileChunk file_chunk = 14;
+    FileTransferStatus transfer_status = 15;
+    ShellInput shell_input = 16;
+    ShellOutput shell_output = 17;
+    ShellResize shell_resize = 18;
+    LogEntry log_entry = 19;
+    LogFilter log_filter = 20;
+    UsbDeviceList usb_devices = 21;
+    QualityChange quality_change = 22;
+  }
+}
