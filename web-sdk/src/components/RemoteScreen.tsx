@@ -33,7 +33,42 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
 
   useEffect(() => {
     if (videoRef.current && stream) {
+      console.log('[RemoteScreen] Setting stream to video element');
+      console.log('[RemoteScreen] Stream active:', stream.active);
+      console.log('[RemoteScreen] Video tracks:', stream.getVideoTracks().length);
+
+      stream.getVideoTracks().forEach((track, i) => {
+        console.log(`[RemoteScreen] Video track ${i}:`, {
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          settings: track.getSettings()
+        });
+      });
+
       videoRef.current.srcObject = stream;
+
+      // Force play
+      videoRef.current.play().then(() => {
+        console.log('[RemoteScreen] Video playing');
+      }).catch(err => {
+        console.error('[RemoteScreen] Video play failed:', err);
+      });
+
+      // Monitor video element state
+      const video = videoRef.current;
+      video.onloadedmetadata = () => {
+        console.log('[RemoteScreen] Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
+      };
+      video.onplaying = () => {
+        console.log('[RemoteScreen] Video is now playing');
+      };
+      video.onstalled = () => {
+        console.warn('[RemoteScreen] Video stalled');
+      };
+      video.onwaiting = () => {
+        console.log('[RemoteScreen] Video waiting for data');
+      };
     }
   }, [stream]);
 
