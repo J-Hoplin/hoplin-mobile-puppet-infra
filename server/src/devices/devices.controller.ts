@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
   Param,
@@ -16,6 +17,7 @@ import {
 import { DevicesService } from './devices.service';
 import {
   CreateDeviceDto,
+  UpdateDeviceDto,
   VerifyDeviceDto,
   VerifyDeviceResponseDto,
   DeviceResponseDto,
@@ -24,11 +26,15 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { SignalingGateway } from '../signaling/signaling.gateway';
 
 @ApiTags('devices')
 @Controller('devices')
 export class DevicesController {
-  constructor(private devicesService: DevicesService) {}
+  constructor(
+    private devicesService: DevicesService,
+    private signalingGateway: SignalingGateway,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -118,6 +124,37 @@ export class DevicesController {
       authCode: device.authCode,
       status: device.status,
       capabilities: device.capabilities as Record<string, unknown>,
+      lastSeenAt: device.lastSeenAt ?? undefined,
+      createdAt: device.createdAt,
+    };
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update device' })
+  @ApiResponse({ status: 200, type: DeviceResponseDto })
+  @ApiResponse({ status: 404, description: 'Device not found' })
+  async updateDevice(
+    @CurrentUser('id') userId: string,
+    @Param('id') deviceId: string,
+    @Body() dto: UpdateDeviceDto,
+  ): Promise<DeviceResponseDto> {
+    const device = await this.devicesService.updateDevice(userId, deviceId, dto);
+
+    // Notify connected device about the name change
+    if (dto.name) {
+      const sent = this.signalingGateway.sendToDevice(deviceId, 'device:updated', {
+        name: device.name,
+      });
+      console.log(`[DevicesController] Sent device:updated event to ${deviceId}: ${sent}`);
+    }
+
+    return {
+      id: device.id,
+      name: device.name,
+      status: device.status,
+      capabilities: device.capabilities as Record<string, unknown> | undefined,
       lastSeenAt: device.lastSeenAt ?? undefined,
       createdAt: device.createdAt,
     };

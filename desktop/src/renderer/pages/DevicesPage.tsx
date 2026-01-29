@@ -1,7 +1,35 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { MdPhoneAndroid, MdAdd, MdClose, MdContentCopy, MdCheck } from 'react-icons/md';
+import { MdPhoneAndroid, MdAdd, MdClose, MdContentCopy, MdCheck, MdEdit, MdDelete } from 'react-icons/md';
 import { useAuthStore } from '../store/authStore';
+
+// Modal component that renders to body using Portal
+const Modal: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ children, onClose }) => {
+  return createPortal(
+    <div
+      className="backdrop"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+      onClick={onClose}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
 
 interface Device {
   id: string;
@@ -22,6 +50,17 @@ export const DevicesPage: React.FC = () => {
   const [addingDevice, setAddingDevice] = useState(false);
   const [newDeviceCode, setNewDeviceCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Rename modal state
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameDevice, setRenameDevice] = useState<Device | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renaming, setRenaming] = useState(false);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteDevice, setDeleteDevice] = useState<Device | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -87,6 +126,69 @@ export const DevicesPage: React.FC = () => {
       navigator.clipboard.writeText(newDeviceCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const openRenameModal = (device: Device) => {
+    setRenameDevice(device);
+    setRenameValue(device.name);
+    setShowRenameModal(true);
+  };
+
+  const handleRename = async () => {
+    if (!renameDevice || !renameValue.trim()) return;
+
+    setRenaming(true);
+    try {
+      const response = await fetch(`${serverUrl}/devices/${renameDevice.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: renameValue.trim() }),
+      });
+
+      if (response.ok) {
+        setDevices((prev) =>
+          prev.map((d) =>
+            d.id === renameDevice.id ? { ...d, name: renameValue.trim() } : d
+          )
+        );
+        setShowRenameModal(false);
+        setRenameDevice(null);
+      }
+    } catch (err) {
+      console.error('Failed to rename device:', err);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const openDeleteModal = (device: Device) => {
+    setDeleteDevice(device);
+    setShowDeleteModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteDevice) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetch(`${serverUrl}/devices/${deleteDevice.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        setDevices((prev) => prev.filter((d) => d.id !== deleteDevice.id));
+        setShowDeleteModal(false);
+        setDeleteDevice(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete device:', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -179,6 +281,8 @@ export const DevicesPage: React.FC = () => {
               key={device.id}
               device={device}
               onConnect={() => handleConnectDevice(device)}
+              onRename={() => openRenameModal(device)}
+              onDelete={() => openDeleteModal(device)}
               style={{ animationDelay: `${index * 0.05}s` }}
             />
           ))}
@@ -332,6 +436,163 @@ export const DevicesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Rename Device Modal */}
+      {showRenameModal && renameDevice && (
+        <Modal onClose={() => setShowRenameModal(false)}>
+          <div
+            className="card fade-in"
+            style={{
+              width: '400px',
+              maxWidth: '90%',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="card-header"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>Rename Device</span>
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '4px' }}
+                onClick={() => setShowRenameModal(false)}
+              >
+                <MdClose size={18} />
+              </button>
+            </div>
+            <div className="card-body">
+              <div style={{ marginBottom: '20px' }}>
+                <label className="label">Device Name</label>
+                <input
+                  type="text"
+                  className="input"
+                  style={{ width: '100%' }}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRename()}
+                  autoFocus
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                  onClick={() => setShowRenameModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={handleRename}
+                  disabled={renaming || !renameValue.trim()}
+                >
+                  {renaming ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Device Modal */}
+      {showDeleteModal && deleteDevice && (
+        <Modal onClose={() => setShowDeleteModal(false)}>
+          <div
+            className="card fade-in"
+            style={{
+              width: '400px',
+              maxWidth: '90%',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="card-header"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>Delete Device</span>
+              <button
+                className="btn btn-ghost"
+                style={{ padding: '4px' }}
+                onClick={() => setShowDeleteModal(false)}
+              >
+                <MdClose size={18} />
+              </button>
+            </div>
+            <div className="card-body">
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '20px 0',
+                }}
+              >
+                <div
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    background: 'rgba(255, 107, 107, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 16px',
+                  }}
+                >
+                  <MdDelete size={28} style={{ color: '#ff6b6b' }} />
+                </div>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                  Are you sure you want to delete
+                </p>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  "{deleteDevice.name}"?
+                </p>
+                <p
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--text-muted)',
+                    marginTop: '12px',
+                  }}
+                >
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
+                  onClick={() => setShowDeleteModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    background: '#ff6b6b',
+                    color: '#fff',
+                    border: 'none',
+                  }}
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -339,8 +600,10 @@ export const DevicesPage: React.FC = () => {
 const DeviceCard: React.FC<{
   device: Device;
   onConnect: () => void;
+  onRename: () => void;
+  onDelete: () => void;
   style?: React.CSSProperties;
-}> = ({ device, onConnect, style }) => {
+}> = ({ device, onConnect, onRename, onDelete, style }) => {
   const statusConfig = {
     ONLINE: {
       color: 'var(--success)',
@@ -409,16 +672,42 @@ const DeviceCard: React.FC<{
             />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h3
-              style={{
-                fontSize: '15px',
-                fontWeight: 600,
-                marginBottom: '6px',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {device.name}
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3
+                style={{
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  marginBottom: '6px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {device.name}
+              </h3>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  className="btn btn-ghost"
+                  style={{ padding: '4px' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRename();
+                  }}
+                  title="Rename"
+                >
+                  <MdEdit size={16} />
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  style={{ padding: '4px', color: '#ff6b6b' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                  }}
+                  title="Delete"
+                >
+                  <MdDelete size={16} />
+                </button>
+              </div>
+            </div>
             <div
               style={{
                 display: 'flex',

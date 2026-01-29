@@ -361,4 +361,19 @@ export class SignalingGateway
   handleTurnCredentials() {
     return this.getTurnCredentials();
   }
+
+  // Public method to send events to connected devices
+  sendToDevice(deviceId: string, event: string, data: unknown): boolean {
+    const socketId = this.connectedDevices.get(deviceId);
+    this.logger.log(`sendToDevice: deviceId=${deviceId}, event=${event}, socketId=${socketId}, connectedDevices=${Array.from(this.connectedDevices.keys()).join(',')}`);
+    if (socketId) {
+      this.server.to(socketId).emit(event, data);
+      return true;
+    }
+    return false;
+  }
+
+  isDeviceConnected(deviceId: string): boolean {
+    return this.connectedDevices.has(deviceId);
+  }
 }

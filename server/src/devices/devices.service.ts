@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma';
 import { AuthService } from '../auth/auth.service';
 import {
   CreateDeviceDto,
+  UpdateDeviceDto,
   VerifyDeviceDto,
   VerifyDeviceResponseDto,
 } from './dto';
@@ -79,6 +80,26 @@ export class DevicesService {
     }
 
     return device;
+  }
+
+  async updateDevice(userId: string, deviceId: string, dto: UpdateDeviceDto) {
+    const device = await this.prisma.device.findFirst({
+      where: {
+        id: deviceId,
+        ownerId: userId,
+      },
+    });
+
+    if (!device) {
+      throw new NotFoundException('Device not found');
+    }
+
+    return this.prisma.device.update({
+      where: { id: deviceId },
+      data: {
+        ...(dto.name && { name: dto.name }),
+      },
+    });
   }
 
   async verifyDevice(dto: VerifyDeviceDto): Promise<VerifyDeviceResponseDto> {
