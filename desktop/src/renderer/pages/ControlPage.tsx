@@ -265,6 +265,8 @@ export const ControlPage: React.FC = () => {
                 alignItems: 'center',
                 background: 'var(--bg-primary)',
                 border: '1px solid var(--border-color)',
+                padding: '16px',
+                overflow: 'hidden',
               }}
             >
               <RemoteScreen
@@ -276,7 +278,11 @@ export const ControlPage: React.FC = () => {
                 onHome={sendHome}
                 onRecent={sendRecent}
                 showControls={true}
-                style={{ maxHeight: '100%', borderRadius: '8px' }}
+                style={{
+                  maxHeight: '100%',
+                  maxWidth: '100%',
+                  borderRadius: '8px',
+                }}
               />
             </div>
             <div

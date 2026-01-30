@@ -21,7 +21,7 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   onTouchMove,
   className,
   style,
-  aspectRatio = 9 / 16,
+  aspectRatio: propAspectRatio,
   showControls = true,
   onBack,
   onHome,
@@ -30,9 +30,21 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
+  const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
+
+  // Calculate aspect ratio from video dimensions or use prop
+  const aspectRatio = videoDimensions
+    ? videoDimensions.width / videoDimensions.height
+    : (propAspectRatio || 9 / 16);
+
+  // Determine if landscape mode
+  const isLandscape = aspectRatio > 1;
 
   useEffect(() => {
-    if (videoRef.current && stream) {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (stream) {
       console.log('[RemoteScreen] Setting stream to video element');
       console.log('[RemoteScreen] Stream active:', stream.active);
       console.log('[RemoteScreen] Video tracks:', stream.getVideoTracks().length);
@@ -46,29 +58,47 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
         });
       });
 
-      videoRef.current.srcObject = stream;
+      video.srcObject = stream;
 
       // Force play
-      videoRef.current.play().then(() => {
+      video.play().then(() => {
         console.log('[RemoteScreen] Video playing');
       }).catch(err => {
         console.error('[RemoteScreen] Video play failed:', err);
       });
 
       // Monitor video element state
-      const video = videoRef.current;
-      video.onloadedmetadata = () => {
+      const handleMetadata = () => {
         console.log('[RemoteScreen] Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+        }
       };
-      video.onplaying = () => {
-        console.log('[RemoteScreen] Video is now playing');
+
+      const handleResize = () => {
+        console.log('[RemoteScreen] Video resized:', video.videoWidth, 'x', video.videoHeight);
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+        }
       };
-      video.onstalled = () => {
-        console.warn('[RemoteScreen] Video stalled');
+
+      video.onloadedmetadata = handleMetadata;
+      video.onplaying = () => console.log('[RemoteScreen] Video is now playing');
+      video.onstalled = () => console.warn('[RemoteScreen] Video stalled');
+      video.onwaiting = () => console.log('[RemoteScreen] Video waiting for data');
+      video.onresize = handleResize;
+
+      return () => {
+        video.onloadedmetadata = null;
+        video.onplaying = null;
+        video.onstalled = null;
+        video.onwaiting = null;
+        video.onresize = null;
       };
-      video.onwaiting = () => {
-        console.log('[RemoteScreen] Video waiting for data');
-      };
+    } else {
+      // Reset when stream is removed
+      setVideoDimensions(null);
+      video.srcObject = null;
     }
   }, [stream]);
 
@@ -148,53 +178,75 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '8px',
+        width: '100%',
+        height: '100%',
         ...style,
       }}
     >
       <div
         style={{
           position: 'relative',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flex: 1,
+          // Fill available space while respecting aspect ratio
           width: '100%',
-          maxWidth: '400px',
-          aspectRatio: String(aspectRatio),
-          backgroundColor: '#000',
-          borderRadius: '8px',
+          minHeight: 0, // Important for flex child to shrink
           overflow: 'hidden',
         }}
       >
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
+        <div
           style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            touchAction: 'none',
-            cursor: 'pointer',
+            position: 'relative',
+            // Use max dimensions and aspect ratio to fit within container
+            maxWidth: '100%',
+            maxHeight: '100%',
+            aspectRatio: String(aspectRatio),
+            // Both dimensions are constrained by max, but one dimension is 100%
+            // Height-based for portrait (video is tall), width-based for landscape (video is wide)
+            height: isLandscape ? 'auto' : '100%',
+            width: isLandscape ? '100%' : 'auto',
+            backgroundColor: '#000',
+            borderRadius: '8px',
+            overflow: 'hidden',
           }}
-        />
-        {!stream && (
-          <div
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            onPointerDown={handlePointerDown}
+            onPointerUp={handlePointerUp}
+            onPointerMove={handlePointerMove}
+            onPointerLeave={handlePointerLeave}
             style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              color: '#666',
-              textAlign: 'center',
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              touchAction: 'none',
+              cursor: 'pointer',
             }}
-          >
-            <p>No stream</p>
-            <p style={{ fontSize: '12px' }}>Waiting for connection...</p>
-          </div>
-        )}
+          />
+          {!stream && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                color: '#666',
+                textAlign: 'center',
+              }}
+            >
+              <p>No stream</p>
+              <p style={{ fontSize: '12px' }}>Waiting for connection...</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {showControls && (
