@@ -45,6 +45,9 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     client.on('onShellOutput', (data: string) => {
       store.addShellOutput(data + '\n');
     });
+    client.on('onShellClear', () => {
+      store.clearShellOutput();
+    });
 
     clientRef.current = client;
 

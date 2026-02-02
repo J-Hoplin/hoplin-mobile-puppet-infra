@@ -27,6 +27,7 @@ export interface RemotePuppetEvents {
   onFileTransferComplete: (transferId: string) => void;
   onFileTransferError: (transferId: string, error: string) => void;
   onShellOutput: (data: string, isStderr: boolean) => void;
+  onShellClear: () => void;
   onError: (error: string) => void;
 }
 
@@ -382,7 +383,11 @@ export class RemotePuppetClient {
           this.handleFileMessage(parsed);
           break;
         case 'shell':
-          this.events.onShellOutput?.(parsed.data || '', parsed.isStderr || false);
+          if (parsed.type === 'clear') {
+            this.events.onShellClear?.();
+          } else {
+            this.events.onShellOutput?.(parsed.data || '', parsed.isStderr || false);
+          }
           break;
       }
     } catch (e) {
