@@ -1,5 +1,7 @@
 # Remote Puppet
 
+> # 설계도는 공개하지 않습니다 설계도가 필요한 경우에는 개별 연락 주세요
+
 ### WebRTC-based Remote Android Device Control System
 
 <div style="display: flex; align-items: center;">
