@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import type { MetricsData, ProcessInfo, DeviceInfo } from '../types';
+import { useSDKTheme } from '../theme';
 
 export interface MetricsPanelProps {
   metrics: MetricsData | null;
@@ -26,6 +27,7 @@ const CircularGauge: React.FC<{
   size?: number;
   icon?: React.ReactNode;
 }> = ({ value, max, label, color, size = 100, icon }) => {
+  const theme = useSDKTheme();
   const percentage = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   const strokeWidth = 6;
   const radius = (size - strokeWidth) / 2;
@@ -60,7 +62,7 @@ const CircularGauge: React.FC<{
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="rgba(255,255,255,0.12)"
+            stroke={theme.border}
             strokeWidth={strokeWidth}
           />
           {/* Progress */}
@@ -111,7 +113,7 @@ const CircularGauge: React.FC<{
             fontSize: '18px',
             fontWeight: 700,
             fontFamily: "'JetBrains Mono', monospace",
-            color: '#ffffff',
+            color: theme.foreground,
             textShadow: `0 0 20px ${color}40`,
           }}>
             {percentage.toFixed(0)}%
@@ -122,7 +124,7 @@ const CircularGauge: React.FC<{
       <span style={{
         fontSize: '11px',
         fontWeight: 600,
-        color: '#b0b0c0',
+        color: theme.foregroundSecondary,
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
       }}>
@@ -140,20 +142,25 @@ const StatCard: React.FC<{
   subValue?: string;
   color: string;
   isActive?: boolean;
-}> = ({ icon, label, value, subValue, color, isActive }) => (
+}> = ({ icon, label, value, subValue, color, isActive }) => {
+  const theme = useSDKTheme();
+  return (
   <div style={{
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    padding: '12px 14px',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+    gap: '10px',
+    padding: '10px 12px',
+    background: `linear-gradient(135deg, ${theme.hover} 0%, transparent 100%)`,
     borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: `1px solid ${theme.border}`,
     transition: 'all 0.2s ease',
+    minWidth: 0,
+    overflow: 'hidden',
   }}>
     <div style={{
       width: '36px',
       height: '36px',
+      flexShrink: 0,
       borderRadius: '10px',
       background: `linear-gradient(135deg, ${color}20 0%, ${color}08 100%)`,
       display: 'flex',
@@ -179,10 +186,13 @@ const StatCard: React.FC<{
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{
         fontSize: '10px',
-        color: '#9090a0',
+        color: theme.foregroundSecondary,
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
         marginBottom: '2px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       }}>
         {label}
       </div>
@@ -195,14 +205,14 @@ const StatCard: React.FC<{
           fontSize: '16px',
           fontWeight: 700,
           fontFamily: "'JetBrains Mono', monospace",
-          color: '#ffffff',
+          color: theme.foreground,
         }}>
           {value}
         </span>
         {subValue && (
           <span style={{
             fontSize: '11px',
-            color: '#00d68f',
+            color: theme.success,
           }}>
             {subValue}
           </span>
@@ -210,7 +220,8 @@ const StatCard: React.FC<{
       </div>
     </div>
   </div>
-);
+  );
+};
 
 // Process Row Component
 const ProcessRow: React.FC<{
@@ -218,6 +229,7 @@ const ProcessRow: React.FC<{
   index: number;
   maxCpu: number;
 }> = ({ process, index, maxCpu }) => {
+  const theme = useSDKTheme();
   const cpuBarWidth = maxCpu > 0 ? (process.cpuPercent / maxCpu) * 100 : 0;
 
   return (
@@ -226,14 +238,14 @@ const ProcessRow: React.FC<{
       gridTemplateColumns: '52px 1fr 70px 70px',
       alignItems: 'center',
       padding: '10px 12px',
-      background: index % 2 === 0 ? 'rgba(255,255,255,0.04)' : 'transparent',
+      background: index % 2 === 0 ? theme.hover : 'transparent',
       borderRadius: '6px',
       transition: 'background 0.15s ease',
     }}>
       <span style={{
         fontSize: '11px',
         fontFamily: "'JetBrains Mono', monospace",
-        color: '#808090',
+        color: theme.foregroundMuted,
       }}>
         {process.pid}
       </span>
@@ -254,7 +266,7 @@ const ProcessRow: React.FC<{
         }} />
         <span style={{
           fontSize: '12px',
-          color: '#ffffff',
+          color: theme.foreground,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -273,7 +285,7 @@ const ProcessRow: React.FC<{
           width: '32px',
           height: '4px',
           borderRadius: '2px',
-          background: 'rgba(255,255,255,0.15)',
+          background: theme.border,
           overflow: 'hidden',
         }}>
           <div style={{
@@ -287,7 +299,7 @@ const ProcessRow: React.FC<{
         <span style={{
           fontSize: '11px',
           fontFamily: "'JetBrains Mono', monospace",
-          color: '#a0a0b0',
+          color: theme.foregroundSecondary,
           width: '32px',
           textAlign: 'right',
         }}>
@@ -308,7 +320,9 @@ const ProcessRow: React.FC<{
 };
 
 // Loading/Empty State
-const EmptyState: React.FC = () => (
+const EmptyState: React.FC = () => {
+  const theme = useSDKTheme();
+  return (
   <div style={{
     display: 'flex',
     flexDirection: 'column',
@@ -342,12 +356,13 @@ const EmptyState: React.FC = () => (
     </div>
     <p style={{
       fontSize: '13px',
-      color: '#9090a0',
+      color: theme.foregroundSecondary,
     }}>
       Waiting for metrics...
     </p>
   </div>
-);
+  );
+};
 
 // Icons
 const CpuIcon = () => (
@@ -365,7 +380,9 @@ const MemoryIcon = () => (
   </svg>
 );
 
-const BatteryIcon: React.FC<{ level: number; isCharging: boolean }> = ({ level, isCharging }) => (
+const BatteryIcon: React.FC<{ level: number; isCharging: boolean }> = ({ level, isCharging }) => {
+  const theme = useSDKTheme();
+  return (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="7" width="18" height="10" rx="2" />
     <path d="M22 11v2" />
@@ -376,15 +393,16 @@ const BatteryIcon: React.FC<{ level: number; isCharging: boolean }> = ({ level, 
         width={Math.max(1, (level * 14))}
         height="6"
         rx="1"
-        fill={level < 0.2 ? '#ff4757' : level < 0.5 ? '#ffaa00' : '#00d68f'}
+        fill={level < 0.2 ? theme.error : level < 0.5 ? theme.warning : theme.success}
         stroke="none"
       />
     )}
     {isCharging && (
-      <path d="M10 10l2 2-2 2" stroke="#ffaa00" strokeWidth="2" fill="none" />
+      <path d="M10 10l2 2-2 2" stroke={theme.warning} strokeWidth="2" fill="none" />
     )}
   </svg>
-);
+  );
+};
 
 const TempIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -401,14 +419,15 @@ const PhoneIcon = () => (
 
 // Device Info Card Component
 const DeviceInfoCard: React.FC<{ deviceInfo?: DeviceInfo }> = ({ deviceInfo }) => {
+  const theme = useSDKTheme();
   const getValue = (value?: string | number): string => value?.toString() ?? '-';
 
   return (
     <div style={{
       padding: '14px',
-      background: 'linear-gradient(135deg, rgba(0, 212, 170, 0.08) 0%, rgba(168, 85, 247, 0.05) 100%)',
+      background: `linear-gradient(135deg, ${theme.success}14 0%, ${theme.accent}0d 100%)`,
       borderRadius: '12px',
-      border: '1px solid rgba(0, 212, 170, 0.2)',
+      border: `1px solid ${theme.success}33`,
     }}>
       {/* Device Name Header */}
       <div style={{
@@ -417,7 +436,7 @@ const DeviceInfoCard: React.FC<{ deviceInfo?: DeviceInfo }> = ({ deviceInfo }) =
         gap: '10px',
         marginBottom: '12px',
         paddingBottom: '10px',
-        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        borderBottom: `1px solid ${theme.border}`,
       }}>
         <div style={{
           width: '32px',
@@ -436,7 +455,7 @@ const DeviceInfoCard: React.FC<{ deviceInfo?: DeviceInfo }> = ({ deviceInfo }) =
           <div style={{
             fontSize: '14px',
             fontWeight: 700,
-            color: '#ffffff',
+            color: theme.foreground,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -445,7 +464,7 @@ const DeviceInfoCard: React.FC<{ deviceInfo?: DeviceInfo }> = ({ deviceInfo }) =
           </div>
           <div style={{
             fontSize: '11px',
-            color: '#9090a0',
+            color: theme.foregroundSecondary,
           }}>
             {getValue(deviceInfo?.manufacturer)} {getValue(deviceInfo?.model)}
           </div>
@@ -477,11 +496,13 @@ const DeviceInfoRow: React.FC<{
   label: string;
   value: string;
   mono?: boolean;
-}> = ({ label, value, mono }) => (
+}> = ({ label, value, mono }) => {
+  const theme = useSDKTheme();
+  return (
   <div style={{ minWidth: 0 }}>
     <div style={{
       fontSize: '9px',
-      color: '#707080',
+      color: theme.foregroundMuted,
       textTransform: 'uppercase',
       letterSpacing: '0.5px',
       marginBottom: '2px',
@@ -490,7 +511,7 @@ const DeviceInfoRow: React.FC<{
     </div>
     <div style={{
       fontSize: '11px',
-      color: '#d0d0e0',
+      color: theme.foreground,
       fontFamily: mono ? "'JetBrains Mono', monospace" : 'inherit',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
@@ -499,7 +520,8 @@ const DeviceInfoRow: React.FC<{
       {value}
     </div>
   </div>
-);
+  );
+};
 
 export const MetricsPanel: React.FC<MetricsPanelProps> = ({
   metrics,
@@ -508,6 +530,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
   showProcesses = true,
   maxProcesses = 5,
 }) => {
+  const theme = useSDKTheme();
   const memoryUsedPercent = useMemo(() => {
     if (!metrics || metrics.totalMemoryBytes === 0) return 0;
     return ((metrics.totalMemoryBytes - metrics.availableMemoryBytes) / metrics.totalMemoryBytes) * 100;
@@ -526,11 +549,11 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
     );
   }
 
-  const batteryColor = metrics.batteryLevel < 0.2 ? '#ff4757' :
-                       metrics.batteryLevel < 0.5 ? '#ffaa00' : '#00d68f';
+  const batteryColor = metrics.batteryLevel < 0.2 ? theme.error :
+                       metrics.batteryLevel < 0.5 ? theme.warning : theme.success;
 
-  const tempColor = metrics.temperatureCelsius > 45 ? '#ff4757' :
-                    metrics.temperatureCelsius > 35 ? '#ffaa00' : '#00d4aa';
+  const tempColor = metrics.temperatureCelsius > 45 ? theme.error :
+                    metrics.temperatureCelsius > 35 ? theme.warning : theme.success;
 
   return (
     <div
@@ -582,7 +605,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
       <div style={{
         textAlign: 'center',
         fontSize: '11px',
-        color: '#9090a0',
+        color: theme.foregroundSecondary,
         fontFamily: "'JetBrains Mono', monospace",
       }}>
         {formatBytes(metrics.usedMemoryBytes)} / {formatBytes(metrics.totalMemoryBytes)}
@@ -621,12 +644,12 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
             alignItems: 'center',
             marginBottom: '12px',
             paddingBottom: '8px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            borderBottom: `1px solid ${theme.border}`,
           }}>
             <span style={{
               fontSize: '11px',
               fontWeight: 600,
-              color: '#b0b0c0',
+              color: theme.foregroundSecondary,
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
             }}>
@@ -634,7 +657,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
             </span>
             <span style={{
               fontSize: '10px',
-              color: '#808090',
+              color: theme.foregroundMuted,
               fontFamily: "'JetBrains Mono', monospace",
             }}>
               {metrics.topProcesses.length} active
@@ -651,7 +674,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
               <span key={header} style={{
                 fontSize: '9px',
                 fontWeight: 600,
-                color: '#707080',
+                color: theme.foregroundMuted,
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
                 textAlign: header === 'CPU' || header === 'MEM' ? 'right' : 'left',

@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import type { FileInfo, FileTransfer } from '../types';
+import { useSDKTheme } from '../theme';
 
 export interface FileExplorerProps {
   files: FileInfo[];
@@ -101,16 +102,17 @@ const TransferItem: React.FC<{
   onRemove?: () => void;
   onCancel?: () => void;
 }> = ({ transfer, onRemove, onCancel }) => {
+  const theme = useSDKTheme();
   const progress = transfer.totalBytes > 0
     ? (transfer.transferredBytes / transfer.totalBytes) * 100
     : 0;
 
   const statusColor = {
-    pending: '#9090a0',
-    transferring: '#00d4aa',
-    completed: '#00d68f',
-    error: '#ff6b6b',
-    cancelled: '#9090a0',
+    pending: theme.foregroundSecondary,
+    transferring: theme.success,
+    completed: theme.success,
+    error: theme.error,
+    cancelled: theme.foregroundSecondary,
   }[transfer.status];
 
   return (
@@ -119,12 +121,12 @@ const TransferItem: React.FC<{
       alignItems: 'center',
       gap: '12px',
       padding: '10px 14px',
-      background: 'rgba(255, 255, 255, 0.03)',
+      background: theme.hover,
       borderRadius: '8px',
       marginBottom: '6px',
     }}>
       <div style={{
-        color: transfer.direction === 'download' ? '#5ba8ff' : '#a855f7',
+        color: transfer.direction === 'download' ? theme.info : theme.accent,
       }}>
         {transfer.direction === 'download' ? <DownloadIcon /> : <UploadIcon />}
       </div>
@@ -132,7 +134,7 @@ const TransferItem: React.FC<{
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: '12px',
-          color: '#ffffff',
+          color: theme.foreground,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -146,7 +148,7 @@ const TransferItem: React.FC<{
             <div style={{
               height: '4px',
               borderRadius: '2px',
-              background: 'rgba(255, 255, 255, 0.1)',
+              background: theme.border,
               overflow: 'hidden',
               marginBottom: '4px',
             }}>
@@ -162,7 +164,7 @@ const TransferItem: React.FC<{
               display: 'flex',
               justifyContent: 'space-between',
               fontSize: '10px',
-              color: '#9090a0',
+              color: theme.foregroundSecondary,
             }}>
               <span>{formatBytes(transfer.transferredBytes)} / {formatBytes(transfer.totalBytes)}</span>
               <span>{formatSpeed(transfer.speed)}</span>
@@ -171,13 +173,13 @@ const TransferItem: React.FC<{
         )}
 
         {transfer.status === 'completed' && (
-          <div style={{ fontSize: '10px', color: '#00d68f' }}>
+          <div style={{ fontSize: '10px', color: theme.success }}>
             Completed • {formatBytes(transfer.totalBytes)}
           </div>
         )}
 
         {transfer.status === 'error' && (
-          <div style={{ fontSize: '10px', color: '#ff6b6b' }}>
+          <div style={{ fontSize: '10px', color: theme.error }}>
             {transfer.error || 'Transfer failed'}
           </div>
         )}
@@ -189,10 +191,10 @@ const TransferItem: React.FC<{
           title="Cancel transfer"
           style={{
             padding: '6px',
-            background: 'rgba(255, 107, 107, 0.15)',
-            border: '1px solid rgba(255, 107, 107, 0.3)',
+            background: `${theme.error}26`,
+            border: `1px solid ${theme.error}4d`,
             borderRadius: '4px',
-            color: '#ff6b6b',
+            color: theme.error,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -210,7 +212,7 @@ const TransferItem: React.FC<{
             padding: '4px',
             background: 'transparent',
             border: 'none',
-            color: '#9090a0',
+            color: theme.foregroundSecondary,
             cursor: 'pointer',
           }}
         >
@@ -227,114 +229,117 @@ const FileRow: React.FC<{
   onClick: () => void;
   onDownload?: () => void;
   onDelete?: () => void;
-}> = ({ file, onClick, onDownload, onDelete }) => (
-  <div
-    onClick={onClick}
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      padding: '10px 14px',
-      cursor: 'pointer',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-      transition: 'background 0.15s ease',
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.background = 'transparent';
-    }}
-  >
-    <div style={{
-      width: '32px',
-      height: '32px',
-      borderRadius: '8px',
-      background: file.isDirectory
-        ? 'linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)'
-        : 'linear-gradient(135deg, #5ba8ff 0%, #3b82f6 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#fff',
-      marginRight: '12px',
-      flexShrink: 0,
-    }}>
-      {file.isDirectory ? <FolderIcon /> : <FileIcon />}
-    </div>
-
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{
-        fontSize: '13px',
-        fontWeight: 500,
-        color: '#ffffff',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
-        {file.name}
-      </div>
-      <div style={{
-        fontSize: '11px',
-        color: '#9090a0',
+}> = ({ file, onClick, onDownload, onDelete }) => {
+  const theme = useSDKTheme();
+  return (
+    <div
+      onClick={onClick}
+      style={{
         display: 'flex',
-        gap: '8px',
-      }}>
-        <span>{file.isDirectory ? '--' : formatBytes(file.size)}</span>
-        <span>•</span>
-        <span>{formatDate(file.modifiedAt)}</span>
-      </div>
-    </div>
-
-    {!file.isDirectory && (
-      <div style={{
-        display: 'flex',
-        gap: '6px',
-        opacity: 0.7,
+        alignItems: 'center',
+        padding: '10px 14px',
+        cursor: 'pointer',
+        borderBottom: `1px solid ${theme.borderLight}`,
+        transition: 'background 0.15s ease',
       }}
-      onClick={(e) => e.stopPropagation()}
-      >
-        {onDownload && (
-          <button
-            onClick={onDownload}
-            style={{
-              padding: '6px 10px',
-              background: 'rgba(0, 212, 170, 0.15)',
-              border: '1px solid rgba(0, 212, 170, 0.3)',
-              borderRadius: '6px',
-              color: '#00d4aa',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '11px',
-            }}
-          >
-            <DownloadIcon />
-          </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={onDelete}
-            style={{
-              padding: '6px 10px',
-              background: 'rgba(255, 107, 107, 0.15)',
-              border: '1px solid rgba(255, 107, 107, 0.3)',
-              borderRadius: '6px',
-              color: '#ff6b6b',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '11px',
-            }}
-          >
-            <TrashIcon />
-          </button>
-        )}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = theme.hover;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      <div style={{
+        width: '32px',
+        height: '32px',
+        borderRadius: '8px',
+        background: file.isDirectory
+          ? `linear-gradient(135deg, ${theme.warning} 0%, ${theme.warning}cc 100%)`
+          : `linear-gradient(135deg, ${theme.info} 0%, ${theme.primary} 100%)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        marginRight: '12px',
+        flexShrink: 0,
+      }}>
+        {file.isDirectory ? <FolderIcon /> : <FileIcon />}
       </div>
-    )}
-  </div>
-);
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: '13px',
+          fontWeight: 500,
+          color: theme.foreground,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {file.name}
+        </div>
+        <div style={{
+          fontSize: '11px',
+          color: theme.foregroundSecondary,
+          display: 'flex',
+          gap: '8px',
+        }}>
+          <span>{file.isDirectory ? '--' : formatBytes(file.size)}</span>
+          <span>•</span>
+          <span>{formatDate(file.modifiedAt)}</span>
+        </div>
+      </div>
+
+      {!file.isDirectory && (
+        <div style={{
+          display: 'flex',
+          gap: '6px',
+          opacity: 0.7,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        >
+          {onDownload && (
+            <button
+              onClick={onDownload}
+              style={{
+                padding: '6px 10px',
+                background: `${theme.success}26`,
+                border: `1px solid ${theme.success}4d`,
+                borderRadius: '6px',
+                color: theme.success,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11px',
+              }}
+            >
+              <DownloadIcon />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              style={{
+                padding: '6px 10px',
+                background: `${theme.error}26`,
+                border: `1px solid ${theme.error}4d`,
+                borderRadius: '6px',
+                color: theme.error,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '11px',
+              }}
+            >
+              <TrashIcon />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({
   files,
@@ -352,6 +357,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
   className,
   style,
 }) => {
+  const theme = useSDKTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showNewFolderDialog, setShowNewFolderDialog] = React.useState(false);
   const [newFolderName, setNewFolderName] = React.useState('');
@@ -450,9 +456,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#12121a',
+        backgroundColor: theme.background,
         borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        border: `1px solid ${theme.border}`,
         overflow: 'hidden',
         ...style,
       }}
@@ -474,7 +480,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            backgroundColor: theme.overlay,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -484,11 +490,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         >
           <div
             style={{
-              backgroundColor: '#1a1a24',
+              backgroundColor: theme.surfaceElevated,
               borderRadius: '12px',
               padding: '20px',
               minWidth: '320px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: `1px solid ${theme.border}`,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -496,7 +502,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             <div style={{
               fontSize: '14px',
               fontWeight: 600,
-              color: '#ffffff',
+              color: theme.foreground,
               marginBottom: '16px',
             }}>
               Create New Folder
@@ -512,9 +518,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#12121a',
-                color: '#ffffff',
+                border: `1px solid ${theme.inputBorder}`,
+                background: theme.background,
+                color: theme.foreground,
                 fontSize: '13px',
                 outline: 'none',
                 marginBottom: '16px',
@@ -530,9 +536,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 style={{
                   padding: '8px 16px',
                   borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  border: `1px solid ${theme.inputBorder}`,
                   background: 'transparent',
-                  color: '#9090a0',
+                  color: theme.foregroundSecondary,
                   fontSize: '12px',
                   cursor: 'pointer',
                 }}
@@ -546,7 +552,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                   padding: '8px 16px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: newFolderName.trim() ? '#00d4aa' : 'rgba(0, 212, 170, 0.3)',
+                  background: newFolderName.trim() ? theme.success : `${theme.success}4d`,
                   color: newFolderName.trim() ? '#000' : 'rgba(0, 0, 0, 0.5)',
                   fontSize: '12px',
                   fontWeight: 600,
@@ -569,7 +575,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(12, 12, 18, 0.8)',
+            backgroundColor: theme.overlay,
             backdropFilter: 'blur(4px)',
             display: 'flex',
             flexDirection: 'column',
@@ -583,8 +589,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             style={{
               width: '40px',
               height: '40px',
-              border: '3px solid rgba(0, 212, 170, 0.2)',
-              borderTopColor: '#00d4aa',
+              border: `3px solid ${theme.success}33`,
+              borderTopColor: theme.success,
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
             }}
@@ -592,7 +598,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           <style>
             {`@keyframes spin { to { transform: rotate(360deg); } }`}
           </style>
-          <span style={{ color: '#9090a0', fontSize: '13px' }}>Loading files...</span>
+          <span style={{ color: theme.foregroundSecondary, fontSize: '13px' }}>Loading files...</span>
         </div>
       )}
 
@@ -603,8 +609,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           alignItems: 'center',
           gap: '8px',
           padding: '10px 14px',
-          backgroundColor: '#16161f',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: theme.surface,
+          borderBottom: `1px solid ${theme.border}`,
         }}
       >
         <button
@@ -612,9 +618,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           style={{
             padding: '6px 10px',
             background: 'transparent',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
+            border: `1px solid ${theme.inputBorder}`,
             borderRadius: '6px',
-            color: '#9090a0',
+            color: theme.foregroundSecondary,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -629,10 +635,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             onClick={handleUploadClick}
             style={{
               padding: '6px 12px',
-              background: 'rgba(0, 212, 170, 0.15)',
-              border: '1px solid rgba(0, 212, 170, 0.3)',
+              background: `${theme.success}26`,
+              border: `1px solid ${theme.success}4d`,
               borderRadius: '6px',
-              color: '#00d4aa',
+              color: theme.success,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -650,10 +656,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             onClick={handleCreateDirectory}
             style={{
               padding: '6px 12px',
-              background: 'rgba(168, 85, 247, 0.15)',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
+              background: `${theme.accent}26`,
+              border: `1px solid ${theme.accent}4d`,
               borderRadius: '6px',
-              color: '#a855f7',
+              color: theme.accent,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -673,8 +679,8 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
           display: 'flex',
           alignItems: 'center',
           padding: '10px 14px',
-          backgroundColor: '#0d0d12',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: theme.surfaceDeep,
+          borderBottom: `1px solid ${theme.border}`,
           fontSize: '12px',
           gap: '4px',
           flexWrap: 'wrap',
@@ -688,7 +694,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             border: 'none',
             background: 'transparent',
             cursor: 'pointer',
-            color: '#00d4aa',
+            color: theme.success,
             borderRadius: '4px',
           }}
         >
@@ -696,7 +702,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
         </button>
         {pathParts.slice(1).map((part, index) => (
           <React.Fragment key={index}>
-            <span style={{ color: '#6b6b7b' }}>/</span>
+            <span style={{ color: theme.foregroundMuted }}>/</span>
             <button
               onClick={() => handleBreadcrumbClick(index + 1)}
               style={{
@@ -704,7 +710,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
-                color: index === pathParts.length - 2 ? '#ffffff' : '#00d4aa',
+                color: index === pathParts.length - 2 ? theme.foreground : theme.success,
                 fontWeight: index === pathParts.length - 2 ? 600 : 400,
                 borderRadius: '4px',
               }}
@@ -719,13 +725,13 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       {activeTransfers.length > 0 && (
         <div style={{
           padding: '10px 14px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          background: 'rgba(0, 212, 170, 0.05)',
+          borderBottom: `1px solid ${theme.border}`,
+          background: `${theme.success}0d`,
         }}>
           <div style={{
             fontSize: '11px',
             fontWeight: 600,
-            color: '#00d4aa',
+            color: theme.success,
             marginBottom: '8px',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
@@ -743,7 +749,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       )}
 
       {/* File List */}
-      <div style={{ flex: 1, overflowY: 'auto', background: '#0d0d12' }}>
+      <div style={{ flex: 1, overflowY: 'auto', background: theme.surfaceDeep }}>
         {currentPath !== '/sdcard' && (
           <div
             onClick={handleParentClick}
@@ -752,30 +758,30 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
               alignItems: 'center',
               padding: '10px 14px',
               cursor: 'pointer',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-              background: 'rgba(255, 255, 255, 0.02)',
+              borderBottom: `1px solid ${theme.borderLight}`,
+              background: theme.hover,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.background = theme.hover;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+              e.currentTarget.style.background = 'transparent';
             }}
           >
             <div style={{
               width: '32px',
               height: '32px',
               borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.1)',
+              background: theme.border,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#9090a0',
+              color: theme.foregroundSecondary,
               marginRight: '12px',
             }}>
               ↑
             </div>
-            <span style={{ fontWeight: 500, color: '#9090a0' }}>..</span>
+            <span style={{ fontWeight: 500, color: theme.foregroundSecondary }}>..</span>
           </div>
         )}
 
@@ -784,7 +790,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
             style={{
               padding: '48px 24px',
               textAlign: 'center',
-              color: '#6b6b7b',
+              color: theme.foregroundMuted,
             }}
           >
             <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.5 }}>
@@ -811,15 +817,15 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       {completedTransfers.length > 0 && (
         <div style={{
           padding: '10px 14px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          background: '#16161f',
+          borderTop: `1px solid ${theme.border}`,
+          background: theme.surface,
           maxHeight: '150px',
           overflowY: 'auto',
         }}>
           <div style={{
             fontSize: '11px',
             fontWeight: 600,
-            color: '#9090a0',
+            color: theme.foregroundSecondary,
             marginBottom: '8px',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
@@ -840,10 +846,10 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({
       <div
         style={{
           padding: '8px 14px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: '#16161f',
+          borderTop: `1px solid ${theme.border}`,
+          backgroundColor: theme.surface,
           fontSize: '11px',
-          color: '#6b6b7b',
+          color: theme.foregroundMuted,
           display: 'flex',
           justifyContent: 'space-between',
         }}

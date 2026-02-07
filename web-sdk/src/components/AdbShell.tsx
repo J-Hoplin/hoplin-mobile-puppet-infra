@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useSDKTheme } from '../theme';
 
 export interface AdbShellProps {
   onCommand: (command: string) => void;
@@ -17,6 +18,7 @@ export const AdbShell: React.FC<AdbShellProps> = ({
   maxHeight = '400px',
   prompt = '$ ',
 }) => {
+  const theme = useSDKTheme();
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [command, setCommand] = useState('');
@@ -85,8 +87,9 @@ export const AdbShell: React.FC<AdbShellProps> = ({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#1e1e1e',
+        backgroundColor: theme.background,
         borderRadius: '8px',
+        border: `1px solid ${theme.border}`,
         overflow: 'hidden',
         fontFamily: 'monospace',
         ...style,
@@ -95,16 +98,17 @@ export const AdbShell: React.FC<AdbShellProps> = ({
       <div
         style={{
           padding: '8px 12px',
-          backgroundColor: '#333',
-          color: '#fff',
+          backgroundColor: theme.surface,
+          color: theme.foreground,
           fontSize: '12px',
           fontWeight: 600,
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
+          borderBottom: `1px solid ${theme.border}`,
         }}
       >
-        <span style={{ color: '#4CAF50' }}>●</span>
+        <span style={{ color: theme.success }}>●</span>
         ADB Shell
       </div>
 
@@ -116,15 +120,16 @@ export const AdbShell: React.FC<AdbShellProps> = ({
           maxHeight: maxHeight === 'none' ? undefined : maxHeight,
           overflowY: 'auto',
           padding: '12px',
-          color: '#d4d4d4',
+          color: theme.foreground,
           fontSize: '13px',
           lineHeight: 1.5,
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-all',
+          backgroundColor: theme.surfaceDeep,
         }}
       >
         {output || (
-          <span style={{ color: '#666' }}>
+          <span style={{ color: theme.foregroundMuted }}>
             Type a command and press Enter to execute.
             {'\n'}Use ↑/↓ for command history.
           </span>
@@ -137,13 +142,13 @@ export const AdbShell: React.FC<AdbShellProps> = ({
             display: 'flex',
             alignItems: 'center',
             padding: '8px 12px',
-            borderTop: '1px solid #333',
-            backgroundColor: '#252525',
+            borderTop: `1px solid ${theme.border}`,
+            backgroundColor: theme.surface,
           }}
         >
           <span
             style={{
-              color: '#4CAF50',
+              color: theme.success,
               marginRight: '8px',
               fontWeight: 'bold',
             }}
@@ -166,7 +171,7 @@ export const AdbShell: React.FC<AdbShellProps> = ({
               backgroundColor: 'transparent',
               border: 'none',
               outline: 'none',
-              color: '#fff',
+              color: theme.foreground,
               fontSize: '13px',
               fontFamily: 'monospace',
             }}
@@ -175,7 +180,7 @@ export const AdbShell: React.FC<AdbShellProps> = ({
             type="submit"
             style={{
               padding: '4px 12px',
-              backgroundColor: '#4CAF50',
+              backgroundColor: theme.success,
               color: '#fff',
               border: 'none',
               borderRadius: '4px',

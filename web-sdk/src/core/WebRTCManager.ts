@@ -42,31 +42,19 @@ export class WebRTCManager {
     this.config.iceServers = servers;
   }
 
-  async createOffer(): Promise<RTCSessionDescriptionInit> {
+  async handleOffer(sdp: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     this.createPeerConnection();
 
-    this.createDataChannel('control', { ordered: true, maxRetransmits: 0 });
-    this.createDataChannel('metrics', { ordered: true, maxRetransmits: 0 });
-    this.createDataChannel('file', { ordered: true });
-    this.createDataChannel('logs', { ordered: true, maxRetransmits: 3 });
-    this.createDataChannel('shell', { ordered: true });
+    // Set remote description (offer from Android)
+    await this.peerConnection!.setRemoteDescription(new RTCSessionDescription(sdp));
+    console.log('[WebRTC] Remote description (offer) set');
 
-    const offer = await this.peerConnection!.createOffer({
-      offerToReceiveVideo: true,
-      offerToReceiveAudio: false,
-    });
+    // Create answer
+    const answer = await this.peerConnection!.createAnswer();
+    await this.peerConnection!.setLocalDescription(answer);
+    console.log('[WebRTC] Local description (answer) set');
 
-    await this.peerConnection!.setLocalDescription(offer);
-
-    return offer;
-  }
-
-  async handleAnswer(sdp: RTCSessionDescriptionInit): Promise<void> {
-    if (!this.peerConnection) {
-      throw new Error('PeerConnection not initialized');
-    }
-
-    await this.peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+    return answer;
   }
 
   async handleIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
@@ -195,16 +183,6 @@ export class WebRTCManager {
     this.peerConnection.ondatachannel = (event) => {
       this.setupDataChannel(event.channel);
     };
-  }
-
-  private createDataChannel(label: string, options?: RTCDataChannelInit): RTCDataChannel {
-    if (!this.peerConnection) {
-      throw new Error('PeerConnection not initialized');
-    }
-
-    const channel = this.peerConnection.createDataChannel(label, options);
-    this.setupDataChannel(channel);
-    return channel;
   }
 
   private setupDataChannel(channel: RTCDataChannel): void {

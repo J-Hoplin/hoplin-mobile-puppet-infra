@@ -41,23 +41,42 @@ export class SignalingClient {
     delete this.events[event];
   }
 
-  connect(): void {
-    if (this.socket?.connected) {
-      return;
-    }
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.socket?.connected) {
+        resolve();
+        return;
+      }
 
-    this.setConnectionState('connecting');
+      this.setConnectionState('connecting');
 
-    this.socket = io(`${this.config.serverUrl}/signaling`, {
-      auth: { token: this.config.token },
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: this.config.reconnectAttempts ?? 10,
-      reconnectionDelay: this.config.reconnectDelay ?? 1000,
-      reconnectionDelayMax: 30000,
+      this.socket = io(`${this.config.serverUrl}/signaling`, {
+        auth: { token: this.config.token },
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: this.config.reconnectAttempts ?? 10,
+        reconnectionDelay: this.config.reconnectDelay ?? 1000,
+        reconnectionDelayMax: 30000,
+      });
+
+      // Wait for connection to be established before resolving
+      const onConnect = () => {
+        this.socket?.off('connect', onConnect);
+        this.socket?.off('connect_error', onError);
+        resolve();
+      };
+
+      const onError = (error: Error) => {
+        this.socket?.off('connect', onConnect);
+        this.socket?.off('connect_error', onError);
+        reject(error);
+      };
+
+      this.socket.on('connect', onConnect);
+      this.socket.on('connect_error', onError);
+
+      this.setupSocketListeners();
     });
-
-    this.setupSocketListeners();
   }
 
   disconnect(): void {
@@ -93,9 +112,9 @@ export class SignalingClient {
     });
   }
 
-  sendAnswer(userId: string, sdp: RTCSessionDescriptionInit): void {
+  sendAnswer(deviceId: string, sdp: RTCSessionDescriptionInit): void {
     this.socket?.emit('webrtc:answer', {
-      targetUserId: userId,
+      targetDeviceId: deviceId,
       sdp,
     });
   }
@@ -153,8 +172,10 @@ export class SignalingClient {
       }
     });
 
-    this.socket.on('webrtc:offer', (data: { userId: string; sdp: RTCSessionDescriptionInit }) => {
-      this.events.onOffer?.(data.userId, data.sdp);
+    this.socket.on('webrtc:offer', (data: { userId?: string; deviceId?: string; sdp: RTCSessionDescriptionInit }) => {
+      // Handle offers from both users (userId) and devices (deviceId)
+      const sourceId = data.deviceId || data.userId || '';
+      this.events.onOffer?.(sourceId, data.sdp);
     });
 
     this.socket.on('webrtc:answer', (data: { deviceId: string; sdp: RTCSessionDescriptionInit }) => {

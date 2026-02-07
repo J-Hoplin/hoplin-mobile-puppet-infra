@@ -1,5 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DeviceStatus } from '@prisma/client';
+
+export class FolderInfoDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  name: string;
+}
 
 export class DeviceResponseDto {
   @ApiProperty()
@@ -11,10 +19,16 @@ export class DeviceResponseDto {
   @ApiProperty({ enum: DeviceStatus })
   status: DeviceStatus;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
+  folderId?: string | null;
+
+  @ApiPropertyOptional({ type: FolderInfoDto })
+  folder?: FolderInfoDto | null;
+
+  @ApiPropertyOptional()
   capabilities?: Record<string, unknown>;
 
-  @ApiProperty({ required: false })
+  @ApiPropertyOptional()
   lastSeenAt?: Date;
 
   @ApiProperty()

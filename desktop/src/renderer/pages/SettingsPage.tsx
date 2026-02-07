@@ -1,244 +1,167 @@
-import React, { useState, useEffect } from 'react';
-import { MdCheck, MdRefresh, MdKeyboard, MdInfo, MdStorage } from 'react-icons/md';
-import { useAuthStore } from '../store/authStore';
+import React from 'react';
+import { Check } from 'lucide-react';
+import { useSettingsStore, useTranslation, languageLabels, type Language } from '../store/settingsStore';
+import {
+  spacing,
+  borderRadius,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  useTheme,
+} from '../design-system';
+import { Toggle } from '../design-system/components';
 
 export const SettingsPage: React.FC = () => {
-  const { serverUrl, setServerUrl } = useAuthStore();
-  const [version, setVersion] = useState('');
-  const [localServerUrl, setLocalServerUrl] = useState(serverUrl);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    window.electronAPI?.getAppVersion().then(setVersion);
-  }, []);
-
-  const handleSaveServerUrl = () => {
-    setServerUrl(localServerUrl);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const handleCheckUpdates = async () => {
-    await window.electronAPI?.checkForUpdates();
-  };
+  const { language, setLanguage, darkMode, toggleDarkMode } = useSettingsStore();
+  const { t } = useTranslation();
+  const { colors } = useTheme();
 
   return (
-    <div className="fade-in">
-      <div style={{ marginBottom: '32px' }}>
+    <div style={{ padding: `${spacing[8]} ${spacing[10]}` }}>
+      {/* Page Header */}
+      <div style={{ marginBottom: spacing[8] }}>
         <h1
           style={{
-            fontSize: '24px',
-            fontWeight: 700,
-            marginBottom: '4px',
-            color: 'var(--text-primary)',
+            fontFamily: fontFamily.display,
+            fontSize: fontSize['4xl'],
+            fontWeight: fontWeight.semibold,
+            color: colors.foreground,
+            marginBottom: spacing[2],
           }}
         >
-          Settings
+          {t('settings.title')}
         </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Configure your Remote Puppet experience
+        <p
+          style={{
+            fontFamily: fontFamily.primary,
+            fontSize: fontSize.md,
+            color: colors.mutedForeground,
+          }}
+        >
+          {t('settings.description')}
         </p>
       </div>
 
-      {/* Server Configuration */}
-      <div className="card" style={{ marginBottom: '20px' }}>
+      {/* Settings Cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[4] }}>
+        {/* Language Card */}
         <div
-          className="card-header"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: borderRadius.xl,
+            padding: spacing[6],
           }}
         >
-          <MdStorage size={18} style={{ color: 'var(--accent)' }} />
-          <span>Server Configuration</span>
-        </div>
-        <div className="card-body">
-          <div>
-            <label className="label">Server URL</label>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <input
-                type="url"
-                className="input mono"
-                style={{ flex: 1, fontSize: '13px' }}
-                value={localServerUrl}
-                onChange={(e) => setLocalServerUrl(e.target.value)}
-                placeholder="http://localhost:3000"
-              />
-              <button
-                className="btn btn-primary"
-                onClick={handleSaveServerUrl}
-                style={{ minWidth: '100px' }}
-              >
-                {saved ? (
-                  <>
-                    <MdCheck size={16} /> Saved
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </button>
-            </div>
-            {saved && (
-              <p
-                style={{
-                  marginTop: '10px',
-                  color: 'var(--success)',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                <MdCheck size={14} />
-                Settings saved successfully
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* About */}
-      <div className="card" style={{ marginBottom: '20px' }}>
-        <div
-          className="card-header"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
-          <MdInfo size={18} style={{ color: 'var(--accent)' }} />
-          <span>About</span>
-        </div>
-        <div className="card-body">
+          {/* Card Header */}
           <div
             style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '20px',
-              padding: '16px',
-              background: 'var(--bg-tertiary)',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
+              marginBottom: spacing[5],
             }}
           >
             <div>
-              <div
+              <h3
                 style={{
-                  fontSize: '14px',
-                  color: 'var(--text-primary)',
-                  fontWeight: 500,
-                  marginBottom: '4px',
+                  fontFamily: fontFamily.display,
+                  fontSize: fontSize.xl,
+                  fontWeight: fontWeight.semibold,
+                  color: colors.foreground,
+                  marginBottom: spacing[1],
                 }}
               >
-                Remote Puppet Desktop
-              </div>
-              <div
-                className="mono"
+                {t('settings.language')}
+              </h3>
+              <p
                 style={{
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
+                  fontFamily: fontFamily.primary,
+                  fontSize: fontSize.md,
+                  color: colors.mutedForeground,
                 }}
               >
-                Version {version || 'Development'}
-              </div>
+                {t('settings.languageDescription')}
+              </p>
             </div>
-            <button
-              className="btn btn-secondary"
-              onClick={handleCheckUpdates}
-              style={{ gap: '6px' }}
-            >
-              <MdRefresh size={16} />
-              Check for Updates
-            </button>
+          </div>
+
+          {/* Language Options */}
+          <div style={{ display: 'flex', gap: spacing[3] }}>
+            {(Object.keys(languageLabels) as Language[]).map((lang) => {
+              const isSelected = language === lang;
+              return (
+                <button
+                  key={lang}
+                  onClick={() => setLanguage(lang)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                    padding: `${spacing[3]} ${spacing[4]}`,
+                    borderRadius: borderRadius.lg,
+                    border: `1px solid ${isSelected ? colors.primary : colors.border}`,
+                    background: isSelected ? colors.primaryAlpha : 'transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: fontFamily.primary,
+                      fontSize: fontSize.lg,
+                      fontWeight: isSelected ? fontWeight.medium : fontWeight.normal,
+                      color: isSelected ? colors.foreground : colors.mutedForeground,
+                    }}
+                  >
+                    {languageLabels[lang]}
+                  </span>
+                  {isSelected && (
+                    <Check size={16} color={colors.primary} />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
-      </div>
 
-      {/* Keyboard Shortcuts */}
-      <div className="card">
+        {/* Dark Mode Card */}
         <div
-          className="card-header"
           style={{
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: borderRadius.xl,
+            padding: spacing[6],
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '10px',
           }}
         >
-          <MdKeyboard size={18} style={{ color: 'var(--accent)' }} />
-          <span>Keyboard Shortcuts</span>
+          <div>
+            <h3
+              style={{
+                fontFamily: fontFamily.display,
+                fontSize: fontSize.xl,
+                fontWeight: fontWeight.semibold,
+                color: colors.foreground,
+                marginBottom: spacing[1],
+              }}
+            >
+              {t('settings.darkMode')}
+            </h3>
+            <p
+              style={{
+                fontFamily: fontFamily.primary,
+                fontSize: fontSize.md,
+                color: colors.mutedForeground,
+              }}
+            >
+              {t('settings.darkModeDescription')}
+            </p>
+          </div>
+          <Toggle checked={darkMode} onChange={toggleDarkMode} />
         </div>
-        <div className="card-body" style={{ padding: '12px 20px' }}>
-          <table style={{ width: '100%', fontSize: '13px' }}>
-            <tbody>
-              <ShortcutRow keys={['⌘', 'D']} description="Toggle DevTools" />
-              <ShortcutRow keys={['⌘', 'R']} description="Reload app" />
-              <ShortcutRow keys={['Esc']} description="Disconnect from device" />
-              <ShortcutRow keys={['⌘', 'Q']} description="Quit application" />
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          marginTop: '32px',
-          padding: '20px',
-          textAlign: 'center',
-          color: 'var(--text-muted)',
-          fontSize: '12px',
-        }}
-      >
-        <p style={{ marginBottom: '8px' }}>
-          Remote Puppet - WebRTC-based Android Remote Control
-        </p>
-        <p>
-          Built with Electron, React, and TypeScript
-        </p>
       </div>
     </div>
   );
 };
-
-const ShortcutRow: React.FC<{ keys: string[]; description: string }> = ({
-  keys,
-  description,
-}) => (
-  <tr
-    style={{
-      borderBottom: '1px solid var(--border-color)',
-    }}
-  >
-    <td style={{ padding: '14px 0', width: '140px' }}>
-      <div style={{ display: 'flex', gap: '6px' }}>
-        {keys.map((key, i) => (
-          <React.Fragment key={i}>
-            <kbd
-              style={{
-                padding: '4px 10px',
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontFamily: 'inherit',
-                color: 'var(--text-primary)',
-                boxShadow: '0 2px 0 var(--border-color)',
-              }}
-            >
-              {key}
-            </kbd>
-            {i < keys.length - 1 && (
-              <span style={{ color: 'var(--text-muted)', alignSelf: 'center' }}>+</span>
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    </td>
-    <td style={{ padding: '14px 0', color: 'var(--text-secondary)' }}>
-      {description}
-    </td>
-  </tr>
-);

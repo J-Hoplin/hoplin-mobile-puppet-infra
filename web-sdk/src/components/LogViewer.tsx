@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { LogEntry, LogFilter } from '../types';
+import { useSDKTheme } from '../theme';
 
 export interface LogViewerProps {
   logs: LogEntry[];
@@ -50,57 +51,60 @@ const formatTimestamp = (timestamp: number): string => {
   return `${time}.${ms}`;
 };
 
-const LogRow: React.FC<{ entry: LogEntry }> = ({ entry }) => (
-  <div
-    style={{
-      display: 'flex',
-      gap: '12px',
-      padding: '6px 12px',
-      fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
-      fontSize: '12px',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-      backgroundColor: LOG_LEVEL_BG[entry.level],
-      transition: 'background-color 0.15s ease',
-    }}
-  >
-    <span style={{
-      color: '#6b6b7b',
-      minWidth: '85px',
-      fontVariantNumeric: 'tabular-nums',
-    }}>
-      {formatTimestamp(entry.timestamp)}
-    </span>
-    <span
+const LogRow: React.FC<{ entry: LogEntry }> = ({ entry }) => {
+  const theme = useSDKTheme();
+  return (
+    <div
       style={{
-        color: LOG_LEVEL_COLORS[entry.level],
-        fontWeight: 600,
-        minWidth: '14px',
-        textShadow: entry.level === 'error' || entry.level === 'fatal'
-          ? `0 0 8px ${LOG_LEVEL_COLORS[entry.level]}40`
-          : 'none',
+        display: 'flex',
+        gap: '12px',
+        padding: '6px 12px',
+        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+        fontSize: '12px',
+        borderBottom: `1px solid ${theme.borderLight}`,
+        backgroundColor: LOG_LEVEL_BG[entry.level],
+        transition: 'background-color 0.15s ease',
       }}
     >
-      {LOG_LEVEL_LABELS[entry.level]}
-    </span>
-    <span style={{
-      color: '#a78bfa',
-      minWidth: '120px',
-      maxWidth: '120px',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    }}>
-      {entry.tag}
-    </span>
-    <span style={{
-      flex: 1,
-      wordBreak: 'break-all',
-      color: '#e0e0e8',
-    }}>
-      {entry.message}
-    </span>
-  </div>
-);
+      <span style={{
+        color: theme.foregroundMuted,
+        minWidth: '85px',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {formatTimestamp(entry.timestamp)}
+      </span>
+      <span
+        style={{
+          color: LOG_LEVEL_COLORS[entry.level],
+          fontWeight: 600,
+          minWidth: '14px',
+          textShadow: entry.level === 'error' || entry.level === 'fatal'
+            ? `0 0 8px ${LOG_LEVEL_COLORS[entry.level]}40`
+            : 'none',
+        }}
+      >
+        {LOG_LEVEL_LABELS[entry.level]}
+      </span>
+      <span style={{
+        color: theme.accent,
+        minWidth: '120px',
+        maxWidth: '120px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>
+        {entry.tag}
+      </span>
+      <span style={{
+        flex: 1,
+        wordBreak: 'break-all',
+        color: theme.foreground,
+      }}>
+        {entry.message}
+      </span>
+    </div>
+  );
+};
 
 export const LogViewer: React.FC<LogViewerProps> = ({
   logs,
@@ -111,6 +115,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
   maxHeight = '400px',
   autoScroll = true,
 }) => {
+  const theme = useSDKTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [searchText, setSearchText] = useState(filter?.searchText || '');
   const [selectedLevels, setSelectedLevels] = useState<Set<LogEntry['level']>>(
@@ -163,9 +168,9 @@ export const LogViewer: React.FC<LogViewerProps> = ({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#12121a',
+        backgroundColor: theme.background,
         borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        border: `1px solid ${theme.border}`,
         overflow: 'hidden',
         ...style,
       }}
@@ -177,8 +182,8 @@ export const LogViewer: React.FC<LogViewerProps> = ({
           flexWrap: 'wrap',
           gap: '12px',
           padding: '12px 16px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: '#16161f',
+          borderBottom: `1px solid ${theme.border}`,
+          backgroundColor: theme.surface,
         }}
       >
         <input
@@ -190,20 +195,20 @@ export const LogViewer: React.FC<LogViewerProps> = ({
             flex: 1,
             minWidth: '180px',
             padding: '8px 14px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            border: `1px solid ${theme.inputBorder}`,
             borderRadius: '8px',
             fontSize: '13px',
-            backgroundColor: '#0d0d12',
-            color: '#e0e0e8',
+            backgroundColor: theme.surfaceDeep,
+            color: theme.foreground,
             outline: 'none',
             transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
           }}
           onFocus={(e) => {
-            e.target.style.borderColor = 'rgba(0, 212, 170, 0.5)';
-            e.target.style.boxShadow = '0 0 0 3px rgba(0, 212, 170, 0.1)';
+            e.target.style.borderColor = theme.success;
+            e.target.style.boxShadow = `0 0 0 3px ${theme.success}1a`;
           }}
           onBlur={(e) => {
-            e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            e.target.style.borderColor = theme.inputBorder;
             e.target.style.boxShadow = 'none';
           }}
         />
@@ -219,14 +224,14 @@ export const LogViewer: React.FC<LogViewerProps> = ({
                 border: '1px solid',
                 borderColor: selectedLevels.has(level)
                   ? LOG_LEVEL_COLORS[level]
-                  : 'rgba(255, 255, 255, 0.15)',
+                  : theme.inputBorder,
                 borderRadius: '6px',
                 backgroundColor: selectedLevels.has(level)
                   ? `${LOG_LEVEL_COLORS[level]}25`
                   : 'transparent',
                 color: selectedLevels.has(level)
                   ? LOG_LEVEL_COLORS[level]
-                  : '#6b6b7b',
+                  : theme.foregroundMuted,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 textShadow: selectedLevels.has(level)
@@ -247,7 +252,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
           flex: 1,
           maxHeight: maxHeight === '100%' ? 'none' : maxHeight,
           overflowY: 'auto',
-          backgroundColor: '#0d0d12',
+          backgroundColor: theme.surfaceDeep,
         }}
       >
         {filteredLogs.length === 0 ? (
@@ -255,7 +260,7 @@ export const LogViewer: React.FC<LogViewerProps> = ({
             style={{
               padding: '48px 16px',
               textAlign: 'center',
-              color: '#6b6b7b',
+              color: theme.foregroundMuted,
               fontSize: '13px',
             }}
           >
@@ -284,10 +289,10 @@ export const LogViewer: React.FC<LogViewerProps> = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '8px 16px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: '#16161f',
+          borderTop: `1px solid ${theme.border}`,
+          backgroundColor: theme.surface,
           fontSize: '11px',
-          color: '#6b6b7b',
+          color: theme.foregroundMuted,
         }}
       >
         <span>
@@ -300,8 +305,8 @@ export const LogViewer: React.FC<LogViewerProps> = ({
             width: '6px',
             height: '6px',
             borderRadius: '50%',
-            backgroundColor: '#00d4aa',
-            boxShadow: '0 0 6px rgba(0, 212, 170, 0.5)',
+            backgroundColor: theme.success,
+            boxShadow: `0 0 6px ${theme.success}80`,
             animation: 'pulse 2s ease-in-out infinite',
           }} />
           Live

@@ -33,6 +33,8 @@ export class AuthService {
       data: {
         email: dto.email,
         password: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
       },
     });
 
@@ -72,6 +74,8 @@ export class AuthService {
   private generateAuthResponse(user: {
     id: string;
     email: string;
+    firstName?: string | null;
+    lastName?: string | null;
   }): AuthResponseDto {
     const payload: JwtPayload = {
       sub: user.id,
@@ -84,6 +88,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
+        firstName: user.firstName ?? undefined,
+        lastName: user.lastName ?? undefined,
       },
     };
   }

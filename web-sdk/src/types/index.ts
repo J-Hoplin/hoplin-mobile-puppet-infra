@@ -7,10 +7,34 @@ export type ConnectionState =
 
 export type DeviceStatus = 'ONLINE' | 'OFFLINE' | 'BUSY';
 
+export interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  deviceCount?: number;
+  onlineCount?: number;
+  offlineCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FolderInfo {
+  id: string;
+  name: string;
+}
+
 export interface Device {
   id: string;
   name: string;
   status: DeviceStatus;
+  folderId?: string | null;
+  folder?: FolderInfo | null;
   capabilities?: DeviceCapabilities;
   lastSeenAt?: string;
   createdAt: string;
@@ -48,7 +72,10 @@ export interface KeyEvent {
   keyCode: number;
 }
 
-export type ControlEvent = TouchEvent | KeyEvent | { type: 'back' | 'home' | 'recent' };
+export type ControlEvent =
+  | TouchEvent
+  | KeyEvent
+  | { type: 'back' | 'home' | 'recent' | 'power_dialog' | 'lock_screen' | 'screenshot' };
 
 export interface DeviceInfo {
   deviceName?: string;

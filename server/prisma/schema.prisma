@@ -17,10 +17,25 @@ model User {
   id        String    @id @default(uuid())
   email     String    @unique
   password  String
+  firstName String?
+  lastName  String?
   devices   Device[]
+  folders   Folder[]
   sessions  Session[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+model Folder {
+  id        String    @id @default(uuid())
+  name      String
+  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+  devices   Device[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([ownerId])
 }
 
 model Device {
@@ -30,6 +45,8 @@ model Device {
   status         DeviceStatus @default(OFFLINE)
   owner          User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId        String
+  folder         Folder?      @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folderId       String?
   sessions       Session[]
   capabilities   Json?
   lastSeenAt     DateTime?
@@ -37,6 +54,7 @@ model Device {
   updatedAt      DateTime     @updatedAt
 
   @@index([ownerId])
+  @@index([folderId])
   @@index([authCode])
   @@index([status])
 }

@@ -35,12 +35,14 @@ export interface AuthenticatedSocket {
 }
 
 export interface WebRTCOffer {
-  targetDeviceId: string;
+  targetDeviceId?: string;  // When user sends offer to device
+  targetUserId?: string;    // When device sends offer to user
   sdp: RTCSessionDescriptionInit;
 }
 
 export interface WebRTCAnswer {
-  targetUserId: string;
+  targetUserId?: string;    // When device sends answer to user
+  targetDeviceId?: string;  // When user sends answer to device
   sdp: RTCSessionDescriptionInit;
 }
 

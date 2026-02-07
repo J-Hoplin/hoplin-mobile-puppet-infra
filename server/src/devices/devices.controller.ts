@@ -22,6 +22,7 @@ import {
   VerifyDeviceResponseDto,
   DeviceResponseDto,
   DeviceWithAuthCodeDto,
+  MoveDeviceToFolderDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -51,6 +52,8 @@ export class DevicesController {
       name: device.name,
       authCode: device.authCode,
       status: device.status,
+      folderId: device.folderId,
+      folder: device.folder,
       createdAt: device.createdAt,
     };
   }
@@ -87,6 +90,8 @@ export class DevicesController {
       name: device.name,
       authCode: device.authCode,
       status: device.status,
+      folderId: device.folderId,
+      folder: device.folder,
       capabilities: device.capabilities as Record<string, unknown>,
       lastSeenAt: device.lastSeenAt ?? undefined,
       createdAt: device.createdAt,
@@ -123,6 +128,8 @@ export class DevicesController {
       name: device.name,
       authCode: device.authCode,
       status: device.status,
+      folderId: device.folderId,
+      folder: device.folder,
       capabilities: device.capabilities as Record<string, unknown>,
       lastSeenAt: device.lastSeenAt ?? undefined,
       createdAt: device.createdAt,
@@ -154,6 +161,37 @@ export class DevicesController {
       id: device.id,
       name: device.name,
       status: device.status,
+      folderId: device.folderId,
+      folder: device.folder,
+      capabilities: device.capabilities as Record<string, unknown> | undefined,
+      lastSeenAt: device.lastSeenAt ?? undefined,
+      createdAt: device.createdAt,
+    };
+  }
+
+  @Patch(':id/folder')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Move device to folder' })
+  @ApiResponse({ status: 200, type: DeviceResponseDto })
+  @ApiResponse({ status: 404, description: 'Device not found' })
+  @ApiResponse({ status: 400, description: 'Invalid folder' })
+  async moveDeviceToFolder(
+    @CurrentUser('id') userId: string,
+    @Param('id') deviceId: string,
+    @Body() dto: MoveDeviceToFolderDto,
+  ): Promise<DeviceResponseDto> {
+    const device = await this.devicesService.moveDeviceToFolder(
+      userId,
+      deviceId,
+      dto,
+    );
+    return {
+      id: device.id,
+      name: device.name,
+      status: device.status,
+      folderId: device.folderId,
+      folder: device.folder,
       capabilities: device.capabilities as Record<string, unknown> | undefined,
       lastSeenAt: device.lastSeenAt ?? undefined,
       createdAt: device.createdAt,
