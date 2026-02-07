@@ -1,47 +1,75 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MdVisibility, MdVisibilityOff, MdSettings } from 'react-icons/md';
+import { Smartphone, Server, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useTranslation } from '../store/settingsStore';
+import {
+  spacing,
+  borderRadius,
+  sizing,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  useTheme,
+  ThemeColors,
+} from '../design-system';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { setAuth, serverUrl, setServerUrl } = useAuthStore();
+  const { t } = useTranslation();
+  const { colors } = useTheme();
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showServerUrl, setShowServerUrl] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!isLogin && password !== confirmPassword) {
+      setError(t('auth.passwordMismatch'));
+      return;
+    }
+
     setLoading(true);
 
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      const body = isLogin
+        ? { email, password }
+        : { email, password, firstName: firstName || undefined, lastName: lastName || undefined };
+
       const response = await fetch(`${serverUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Authentication failed');
+        throw new Error(data.message || t('auth.authFailed'));
       }
 
       setAuth(data.accessToken, data.user);
       navigate('/devices');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
       setLoading(false);
     }
   };
+
+  const cardWidth = isLogin ? sizing.loginCard : sizing.signupCard;
 
   return (
     <div
@@ -50,208 +78,355 @@ export const LoginPage: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--bg-primary)',
-        position: 'relative',
-        overflow: 'hidden',
+        background: colors.background,
+        padding: spacing[5],
       }}
     >
-      {/* Background Pattern */}
       <div
         style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `
-            radial-gradient(circle at 20% 50%, rgba(0, 212, 170, 0.08) 0%, transparent 50%),
-            radial-gradient(circle at 80% 50%, rgba(0, 184, 148, 0.05) 0%, transparent 50%)
-          `,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Grid Pattern */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          pointerEvents: 'none',
-        }}
-      />
-
-      <div
-        className="card fade-in"
-        style={{
-          width: '100%',
-          maxWidth: '420px',
-          margin: '24px',
-          position: 'relative',
-          boxShadow: 'var(--shadow-lg)',
+          width: cardWidth,
+          background: colors.surface,
+          borderRadius: borderRadius['2xl'],
+          border: `1px solid ${colors.border}`,
+          padding: spacing[10],
         }}
       >
+        {/* Logo Section */}
         <div
           style={{
-            padding: '32px 32px 24px',
-            textAlign: 'center',
-            borderBottom: '1px solid var(--border-color)',
-            background: 'linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: spacing[4],
+            marginBottom: spacing[8],
           }}
         >
           <div
             style={{
+              width: sizing.logoMark,
+              height: sizing.logoMark,
+              borderRadius: borderRadius.xl,
+              background: colors.primary,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
-              marginBottom: '16px',
             }}
           >
-            <div
-              style={{
-                width: '12px',
-                height: '12px',
-                borderRadius: '50%',
-                background: 'var(--accent)',
-                boxShadow: '0 0 20px var(--accent)',
-              }}
-            />
+            <Smartphone size={28} color="#FFFFFF" />
+          </div>
+          <div style={{ textAlign: 'center' }}>
             <h1
               style={{
-                fontSize: '20px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '0.5px',
+                fontFamily: fontFamily.display,
+                fontSize: fontSize['4xl'],
+                fontWeight: fontWeight.semibold,
+                color: colors.foreground,
+                marginBottom: spacing[2],
               }}
             >
-              Remote Puppet
+              Hoplin Mobile Puppet
             </h1>
+            <p
+              style={{
+                fontFamily: fontFamily.primary,
+                fontSize: fontSize.lg,
+                color: colors.mutedForeground,
+              }}
+            >
+              {isLogin ? t('auth.subtitle') : t('auth.signupSubtitle')}
+            </p>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            {isLogin ? 'Welcome back! Sign in to continue.' : 'Create an account to get started.'}
-          </p>
         </div>
 
-        <div className="card-body" style={{ padding: '28px 32px' }}>
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '20px' }}>
-              <label className="label">Email</label>
-              <input
-                type="email"
-                className="input"
-                style={{ width: '100%' }}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: spacing[5] }}>
+          {/* Server URL Field */}
+          <FormField label={t('auth.serverUrl')} colors={colors}>
+            <InputWithIcon
+              icon={<Server size={18} />}
+              type="url"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              placeholder="https://example.com:8080"
+              colors={colors}
+            />
+          </FormField>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label className="label">Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
+          {/* Signup: Name Fields */}
+          {!isLogin && (
+            <div style={{ display: 'flex', gap: spacing[4] }}>
+              <FormField label={t('auth.firstName')} style={{ flex: 1 }} colors={colors}>
+                <InputWithIcon
+                  icon={<User size={18} />}
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  colors={colors}
+                />
+              </FormField>
+              <FormField label={t('auth.lastName')} style={{ flex: 1 }} colors={colors}>
+                <InputWithIcon
+                  icon={<User size={18} />}
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  colors={colors}
+                />
+              </FormField>
+            </div>
+          )}
+
+          {/* Email Field */}
+          <FormField label={t('auth.email')} colors={colors}>
+            <InputWithIcon
+              icon={<Mail size={18} />}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+              required
+              colors={colors}
+            />
+          </FormField>
+
+          {/* Password Fields */}
+          {isLogin ? (
+            <FormField label={t('auth.password')} colors={colors}>
+              <InputWithIcon
+                icon={<Lock size={18} />}
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                colors={colors}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: colors.mutedForeground,
+                      display: 'flex',
+                      padding: 0,
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                }
+              />
+            </FormField>
+          ) : (
+            <div style={{ display: 'flex', gap: spacing[4] }}>
+              <FormField label={t('auth.password')} style={{ flex: 1 }} colors={colors}>
+                <InputWithIcon
+                  icon={<Lock size={18} />}
                   type={showPassword ? 'text' : 'password'}
-                  className="input"
-                  style={{ width: '100%', paddingRight: '44px' }}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   required
                   minLength={6}
+                  colors={colors}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: colors.mutedForeground,
+                        display: 'flex',
+                        padding: 0,
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    padding: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  {showPassword ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
-                </button>
-              </div>
+              </FormField>
+              <FormField label={t('auth.confirmPassword')} style={{ flex: 1 }} colors={colors}>
+                <InputWithIcon
+                  icon={<Lock size={18} />}
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                  colors={colors}
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: colors.mutedForeground,
+                        display: 'flex',
+                        padding: 0,
+                      }}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
+                />
+              </FormField>
             </div>
+          )}
 
-            {error && (
-              <div className="error-message" style={{ marginBottom: '20px' }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', marginBottom: '12px', padding: '12px 20px' }}
-              disabled={loading}
-            >
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary"
-              style={{ width: '100%' }}
-              onClick={() => setIsLogin(!isLogin)}
-            >
-              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
-          </form>
-
-          <div style={{ marginTop: '24px', textAlign: 'center' }}>
-            <button
-              type="button"
-              onClick={() => setShowServerUrl(!showServerUrl)}
-              className="btn btn-ghost"
+          {/* Error Message */}
+          {error && (
+            <div
               style={{
-                fontSize: '12px',
-                padding: '6px 12px',
+                padding: `${spacing[3]} ${spacing[4]}`,
+                background: colors.errorAlpha,
+                border: `1px solid ${colors.error}30`,
+                borderRadius: borderRadius.lg,
+                color: colors.error,
+                fontSize: fontSize.md,
               }}
             >
-              <MdSettings size={14} />
-              {showServerUrl ? 'Hide' : 'Server'} settings
-            </button>
+              {error}
+            </div>
+          )}
 
-            {showServerUrl && (
-              <div
-                style={{
-                  marginTop: '12px',
-                  padding: '12px',
-                  background: 'var(--bg-tertiary)',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
-                }}
-              >
-                <label
-                  className="label"
-                  style={{ textAlign: 'left', marginBottom: '6px' }}
-                >
-                  Server URL
-                </label>
-                <input
-                  type="url"
-                  className="input mono"
-                  style={{ width: '100%', fontSize: '12px' }}
-                  value={serverUrl}
-                  onChange={(e) => setServerUrl(e.target.value)}
-                  placeholder="http://localhost:3000"
-                />
-              </div>
-            )}
-          </div>
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: `${spacing[3]} 0`,
+              background: colors.primary,
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: borderRadius.lg,
+              fontFamily: fontFamily.display,
+              fontSize: '15px',
+              fontWeight: fontWeight.semibold,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              transition: 'all 0.2s',
+            }}
+          >
+            {loading ? t('common.loading') : isLogin ? t('auth.login') : t('auth.signup')}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: spacing[4],
+            margin: `${spacing[8]} 0`,
+          }}
+        >
+          <div style={{ flex: 1, height: '1px', background: colors.border }} />
+          <span style={{ fontSize: fontSize.sm, color: colors.mutedForeground }}>{t('auth.or')}</span>
+          <div style={{ flex: 1, height: '1px', background: colors.border }} />
+        </div>
+
+        {/* Switch Mode Link */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: spacing[2],
+          }}
+        >
+          <span style={{ fontSize: fontSize.lg, color: colors.mutedForeground }}>
+            {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setError('');
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: colors.primary,
+              fontSize: fontSize.lg,
+              fontWeight: fontWeight.medium,
+              cursor: 'pointer',
+            }}
+          >
+            {isLogin ? t('auth.signup') : t('auth.login')}
+          </button>
         </div>
       </div>
     </div>
   );
 };
+
+// Form Field Component
+interface FormFieldProps {
+  label: string;
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+  colors: ThemeColors;
+}
+
+const FormField: React.FC<FormFieldProps> = ({ label, children, style, colors }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2], ...style }}>
+    <label
+      style={{
+        fontFamily: fontFamily.primary,
+        fontSize: fontSize.lg,
+        fontWeight: fontWeight.medium,
+        color: colors.foreground,
+      }}
+    >
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+// Input with Icon Component
+interface InputWithIconProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  icon: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  colors: ThemeColors;
+}
+
+const InputWithIcon: React.FC<InputWithIconProps> = ({ icon, rightIcon, style, colors, ...props }) => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: spacing[3],
+      padding: `${spacing[3]} ${spacing[4]}`,
+      background: colors.background,
+      border: `1px solid ${colors.border}`,
+      borderRadius: borderRadius.lg,
+      ...style,
+    }}
+  >
+    <span style={{ color: colors.mutedForeground, display: 'flex' }}>{icon}</span>
+    <input
+      style={{
+        flex: 1,
+        background: 'transparent',
+        border: 'none',
+        outline: 'none',
+        color: colors.foreground,
+        fontFamily: fontFamily.primary,
+        fontSize: fontSize.lg,
+        width: '100%',
+      }}
+      {...props}
+    />
+    {rightIcon}
+  </div>
+);

@@ -1,15 +1,39 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MdScreenShare, MdTerminal, MdArticle, MdArrowBack, MdCircle, MdFolder } from 'react-icons/md';
+import {
+  ArrowLeft,
+  Monitor,
+  Terminal,
+  ScrollText,
+  FolderTree,
+  RefreshCw,
+  Power,
+  Lock,
+  Camera,
+  Circle,
+  Square,
+} from 'lucide-react';
 import {
   RemoteScreen,
   MetricsPanel,
   LogViewer,
   AdbShell,
   FileExplorer,
+  SDKThemeProvider,
 } from '@remote-puppet/web-sdk/react';
 import { useRemoteDevice } from '@remote-puppet/web-sdk/react';
 import { useAuthStore } from '../store/authStore';
+import { useTranslation } from '../store/settingsStore';
+import {
+  spacing,
+  borderRadius,
+  sizing,
+  fontFamily,
+  fontSize,
+  fontWeight,
+  useTheme,
+  ThemeColors,
+} from '../design-system';
 
 type TabType = 'screen' | 'shell' | 'logs' | 'files';
 
@@ -17,6 +41,8 @@ export const ControlPage: React.FC = () => {
   const { deviceId } = useParams<{ deviceId: string }>();
   const navigate = useNavigate();
   const { token, serverUrl } = useAuthStore();
+  const { t } = useTranslation();
+  const { colors, isDark } = useTheme();
 
   const [activeTab, setActiveTab] = useState<TabType>('screen');
 
@@ -43,6 +69,10 @@ export const ControlPage: React.FC = () => {
     sendBack,
     sendHome,
     sendRecent,
+    sendPowerDialog,
+    sendLockScreen,
+    sendScreenshot,
+    reconnect,
     sendShellCommand,
     clearLogs,
     addShellOutput,
@@ -64,12 +94,24 @@ export const ControlPage: React.FC = () => {
   });
 
   const [isLogsStarted, setIsLogsStarted] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
+  const handleReconnect = useCallback(async () => {
+    setIsReconnecting(true);
+    try {
+      const result = await reconnect();
+      if (result && !result.success) {
+        console.error('[ControlPage] Reconnect failed:', result.error);
+      }
+    } finally {
+      setIsReconnecting(false);
+    }
+  }, [reconnect]);
 
   useEffect(() => {
     if (deviceId && token) {
       connect();
     }
-
     return () => {
       disconnect();
     };
@@ -86,7 +128,6 @@ export const ControlPage: React.FC = () => {
     if (activeTab === 'logs' && webrtcState === 'connected') {
       requestAppList();
       if (!isLogsStarted) {
-        // Start logs with default (agent app)
         startLogs();
         setIsLogsStarted(true);
       }
@@ -104,7 +145,6 @@ export const ControlPage: React.FC = () => {
   // Request file list when Files tab is activated and WebRTC is connected
   useEffect(() => {
     if (activeTab === 'files' && webrtcState === 'connected') {
-      // Use device's external storage path, fallback to root
       const defaultPath = metrics?.deviceInfo?.externalStoragePath || '/';
       const path = (!currentPath || currentPath === '/') ? defaultPath : currentPath;
       requestFileList(path);
@@ -115,7 +155,6 @@ export const ControlPage: React.FC = () => {
   const prevTransfersRef = React.useRef(fileTransfers);
   useEffect(() => {
     const prevTransfers = prevTransfersRef.current;
-    // Check if any upload transfer just completed
     const newlyCompleted = fileTransfers.filter(
       (t) =>
         t.status === 'completed' &&
@@ -123,7 +162,6 @@ export const ControlPage: React.FC = () => {
         prevTransfers.find((p) => p.id === t.id)?.status === 'transferring'
     );
     if (newlyCompleted.length > 0 && activeTab === 'files') {
-      // Refresh file list after upload completes
       setTimeout(() => requestFileList(currentPath), 300);
     }
     prevTransfersRef.current = fileTransfers;
@@ -151,53 +189,68 @@ export const ControlPage: React.FC = () => {
   const statusText =
     connectionState === 'connected'
       ? webrtcState === 'connected'
-        ? 'Streaming'
+        ? t('control.streaming')
         : `WebRTC: ${webrtcState}`
       : connectionState;
 
+  const deviceName = metrics?.deviceInfo?.model || deviceId || 'Device';
+
   return (
-    <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <SDKThemeProvider mode={isDark ? 'dark' : 'light'}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: `${spacing[6]} ${spacing[8]}` }}>
       {/* Header */}
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '24px',
+          marginBottom: spacing[6],
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[4] }}>
           <button
-            className="btn btn-ghost"
             onClick={() => navigate('/devices')}
-            style={{ padding: '8px 12px' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: spacing[2],
+              background: 'transparent',
+              border: `1px solid ${colors.border}`,
+              borderRadius: borderRadius.sm,
+              color: colors.mutedForeground,
+              cursor: 'pointer',
+            }}
           >
-            <MdArrowBack size={18} />
-            <span>Back</span>
+            <ArrowLeft size={18} />
           </button>
           <div>
             <h1
               style={{
-                fontSize: '20px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                marginBottom: '2px',
+                fontFamily: fontFamily.display,
+                fontSize: fontSize['2xl'],
+                fontWeight: fontWeight.semibold,
+                color: colors.foreground,
+                marginBottom: spacing[1],
               }}
             >
-              Remote Control
+              {deviceName}
             </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MdCircle
-                size={8}
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+              <div
                 style={{
-                  color: isStreaming ? 'var(--success)' : 'var(--warning)',
-                  filter: isStreaming ? 'drop-shadow(0 0 4px var(--success))' : 'none',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: borderRadius.full,
+                  background: isStreaming ? colors.success : colors.warning,
+                  boxShadow: isStreaming ? `0 0 8px ${colors.success}` : 'none',
                 }}
               />
               <span
                 style={{
-                  fontSize: '12px',
-                  color: isStreaming ? 'var(--success)' : 'var(--text-secondary)',
+                  fontFamily: fontFamily.primary,
+                  fontSize: fontSize.md,
+                  color: isStreaming ? colors.success : colors.mutedForeground,
                 }}
               >
                 {statusText}
@@ -205,68 +258,109 @@ export const ControlPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <button className="btn btn-secondary" onClick={handleDisconnect}>
-          Disconnect
-        </button>
+        <div style={{ display: 'flex', gap: spacing[3] }}>
+          <button
+            onClick={handleReconnect}
+            disabled={isReconnecting}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              padding: `${spacing[2]} ${spacing[4]}`,
+              background: colors.primary,
+              color: colors.foreground,
+              border: 'none',
+              borderRadius: borderRadius.sm,
+              fontFamily: fontFamily.display,
+              fontSize: fontSize.lg,
+              fontWeight: fontWeight.medium,
+              cursor: isReconnecting ? 'not-allowed' : 'pointer',
+              opacity: isReconnecting ? 0.6 : 1,
+            }}
+          >
+            <RefreshCw
+              size={16}
+              style={{ animation: isReconnecting ? 'spin 1s linear infinite' : 'none' }}
+            />
+            {t('control.reconnect')}
+          </button>
+          <button
+            onClick={handleDisconnect}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              padding: `${spacing[2]} ${spacing[4]}`,
+              background: 'transparent',
+              border: `1px solid ${colors.error}`,
+              borderRadius: borderRadius.sm,
+              color: colors.error,
+              fontFamily: fontFamily.display,
+              fontSize: fontSize.lg,
+              fontWeight: fontWeight.medium,
+              cursor: 'pointer',
+            }}
+          >
+            {t('control.disconnect')}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
       <div
         style={{
           display: 'flex',
-          gap: '4px',
-          marginBottom: '20px',
-          padding: '4px',
-          background: 'var(--bg-tertiary)',
-          borderRadius: '10px',
-          width: 'fit-content',
+          borderBottom: `1px solid ${colors.border}`,
+          marginBottom: spacing[5],
         }}
       >
         <TabButton
           active={activeTab === 'screen'}
           onClick={() => setActiveTab('screen')}
-          icon={<MdScreenShare size={16} />}
+          icon={<Monitor size={16} />}
+          colors={colors}
         >
-          Screen
-        </TabButton>
-        <TabButton
-          active={activeTab === 'shell'}
-          onClick={() => setActiveTab('shell')}
-          icon={<MdTerminal size={16} />}
-        >
-          Shell
-        </TabButton>
-        <TabButton
-          active={activeTab === 'logs'}
-          onClick={() => setActiveTab('logs')}
-          icon={<MdArticle size={16} />}
-        >
-          Logs
+          {t('control.tabs.screen')}
         </TabButton>
         <TabButton
           active={activeTab === 'files'}
           onClick={() => setActiveTab('files')}
-          icon={<MdFolder size={16} />}
+          icon={<FolderTree size={16} />}
+          colors={colors}
         >
-          Files
+          {t('control.tabs.files')}
+        </TabButton>
+        <TabButton
+          active={activeTab === 'logs'}
+          onClick={() => setActiveTab('logs')}
+          icon={<ScrollText size={16} />}
+          colors={colors}
+        >
+          {t('control.tabs.logs')}
+        </TabButton>
+        <TabButton
+          active={activeTab === 'shell'}
+          onClick={() => setActiveTab('shell')}
+          icon={<Terminal size={16} />}
+          colors={colors}
+        >
+          {t('control.tabs.shell')}
         </TabButton>
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, display: 'flex', gap: '20px', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', gap: spacing[5], overflow: 'hidden' }}>
         {activeTab === 'screen' && (
           <>
+            {/* Phone Preview */}
             <div
-              className="card"
               style={{
                 flex: 1,
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                background: 'var(--bg-primary)',
-                border: '1px solid var(--border-color)',
-                padding: '16px',
                 overflow: 'hidden',
+                minWidth: 0,
               }}
             >
               <RemoteScreen
@@ -274,46 +368,132 @@ export const ControlPage: React.FC = () => {
                 onTouchDown={sendTouchDown}
                 onTouchUp={sendTouchUp}
                 onTouchMove={sendTouchMove}
-                onBack={sendBack}
-                onHome={sendHome}
-                onRecent={sendRecent}
-                showControls={true}
                 style={{
                   maxHeight: '100%',
                   maxWidth: '100%',
-                  borderRadius: '8px',
                 }}
               />
             </div>
+
+            {/* Metrics Panel */}
             <div
-              className="card"
               style={{
-                width: '320px',
+                width: sizing.metricsPanel,
                 flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: spacing[4],
                 overflow: 'auto',
-                background: 'var(--bg-secondary)',
               }}
             >
-              <div className="card-header" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: metrics ? 'var(--success)' : 'var(--text-muted)',
-                  boxShadow: metrics ? '0 0 8px var(--success)' : 'none',
-                }} />
-                <span>System Metrics</span>
+              {/* Device Controls */}
+              <div
+                style={{
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: borderRadius.xl,
+                  padding: spacing[4],
+                }}
+              >
+                <h3
+                  style={{
+                    fontFamily: fontFamily.display,
+                    fontSize: fontSize.xl,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.foreground,
+                    marginBottom: spacing[4],
+                  }}
+                >
+                  {t('control.deviceControls')}
+                </h3>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: spacing[2],
+                  }}
+                >
+                  <ControlButton
+                    icon={<ArrowLeft size={20} />}
+                    label={t('control.back')}
+                    onClick={sendBack}
+                    colors={colors}
+                  />
+                  <ControlButton
+                    icon={<Circle size={20} />}
+                    label={t('control.home')}
+                    onClick={sendHome}
+                    colors={colors}
+                  />
+                  <ControlButton
+                    icon={<Square size={20} />}
+                    label={t('control.recent')}
+                    onClick={sendRecent}
+                    colors={colors}
+                  />
+                  <ControlButton
+                    icon={<Power size={20} />}
+                    label={t('control.power')}
+                    onClick={sendPowerDialog}
+                    color={colors.error}
+                    colors={colors}
+                  />
+                  <ControlButton
+                    icon={<Lock size={20} />}
+                    label={t('control.lockScreen')}
+                    onClick={sendLockScreen}
+                    colors={colors}
+                  />
+                  <ControlButton
+                    icon={<Camera size={20} />}
+                    label={t('control.screenshot')}
+                    onClick={sendScreenshot}
+                    colors={colors}
+                  />
+                </div>
               </div>
-              <div className="card-body" style={{ padding: '16px' }}>
-                <MetricsPanel
-                  metrics={metrics}
-                  showProcesses={true}
-                  maxProcesses={5}
-                />
+
+              {/* System Metrics */}
+              <div
+                style={{
+                  flex: 1,
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: borderRadius.xl,
+                  padding: spacing[4],
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing[2],
+                    marginBottom: spacing[4],
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: borderRadius.full,
+                      background: metrics ? colors.success : colors.mutedForeground,
+                      boxShadow: metrics ? `0 0 8px ${colors.success}` : 'none',
+                    }}
+                  />
+                  <h3
+                    style={{
+                      fontFamily: fontFamily.display,
+                      fontSize: fontSize.xl,
+                      fontWeight: fontWeight.semibold,
+                      color: colors.foreground,
+                    }}
+                  >
+                    {t('control.systemMetrics')}
+                  </h3>
+                </div>
+                <MetricsPanel metrics={metrics} showProcesses={true} maxProcesses={5} />
               </div>
             </div>
           </>
@@ -321,12 +501,14 @@ export const ControlPage: React.FC = () => {
 
         {activeTab === 'shell' && (
           <div
-            className="card"
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: borderRadius.xl,
             }}
           >
             <AdbShell
@@ -337,8 +519,8 @@ export const ControlPage: React.FC = () => {
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                background: 'var(--bg-primary)',
-                borderRadius: '12px',
+                background: colors.background,
+                borderRadius: borderRadius.lg,
               }}
             />
           </div>
@@ -346,37 +528,50 @@ export const ControlPage: React.FC = () => {
 
         {activeTab === 'logs' && (
           <div
-            className="card"
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: borderRadius.xl,
             }}
           >
             <div
-              className="card-header"
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '16px',
+                padding: `${spacing[4]} ${spacing[5]}`,
+                borderBottom: `1px solid ${colors.border}`,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span>Application Logs</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                <span
+                  style={{
+                    fontFamily: fontFamily.display,
+                    fontSize: fontSize.xl,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.foreground,
+                  }}
+                >
+                  {t('control.applicationLogs')}
+                </span>
                 <select
                   value={selectedLogPackage}
                   onChange={(e) => handleAppChange(e.target.value)}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-tertiary)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px',
+                    padding: `${spacing[2]} ${spacing[3]}`,
+                    borderRadius: borderRadius.md,
+                    border: `1px solid ${colors.border}`,
+                    background: colors.background,
+                    color: colors.foreground,
+                    fontFamily: fontFamily.primary,
+                    fontSize: fontSize.md,
                     cursor: 'pointer',
                     minWidth: '200px',
+                    outline: 'none',
                   }}
                 >
                   {appList.length === 0 ? (
@@ -390,30 +585,39 @@ export const ControlPage: React.FC = () => {
                   )}
                 </select>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+                <span
+                  style={{
+                    fontSize: fontSize.sm,
+                    color: colors.mutedForeground,
+                  }}
+                >
                   {logs.length} entries
                 </span>
                 <button
-                  className="btn btn-ghost"
-                  style={{ padding: '4px 12px', fontSize: '12px' }}
                   onClick={clearLogs}
+                  style={{
+                    padding: `${spacing[1]} ${spacing[3]}`,
+                    background: 'transparent',
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: borderRadius.md,
+                    color: colors.mutedForeground,
+                    fontSize: fontSize.sm,
+                    cursor: 'pointer',
+                  }}
                 >
                   Clear
                 </button>
               </div>
             </div>
-            <div style={{ flex: 1, overflow: 'hidden', padding: '12px' }}>
+            <div style={{ flex: 1, overflow: 'hidden', padding: spacing[4] }}>
               <LogViewer
                 logs={logs}
                 style={{
                   height: '100%',
-                  background: 'var(--bg-primary)',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-color)',
+                  background: colors.background,
+                  borderRadius: borderRadius.lg,
+                  border: `1px solid ${colors.border}`,
                 }}
                 maxHeight="100%"
               />
@@ -423,12 +627,14 @@ export const ControlPage: React.FC = () => {
 
         {activeTab === 'files' && (
           <div
-            className="card"
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              borderRadius: borderRadius.xl,
             }}
           >
             <FileExplorer
@@ -450,14 +656,18 @@ export const ControlPage: React.FC = () => {
               onRemoveTransfer={removeFileTransfer}
               style={{
                 height: '100%',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
+                background: colors.surface,
+                borderRadius: borderRadius.lg,
               }}
             />
           </div>
         )}
       </div>
+
+      {/* Spin animation for reconnect button */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+    </SDKThemeProvider>
   );
 };
 
@@ -466,26 +676,60 @@ const TabButton: React.FC<{
   onClick: () => void;
   icon: React.ReactNode;
   children: React.ReactNode;
-}> = ({ active, onClick, icon, children }) => (
+  colors: ThemeColors;
+}> = ({ active, onClick, icon, children, colors }) => (
   <button
     onClick={onClick}
     style={{
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '8px',
-      backgroundColor: active ? 'var(--accent)' : 'transparent',
-      color: active ? 'var(--bg-primary)' : 'var(--text-secondary)',
-      fontWeight: 600,
-      fontSize: '13px',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px',
-      boxShadow: active ? '0 2px 10px rgba(0, 212, 170, 0.3)' : 'none',
+      gap: spacing[2],
+      padding: `${spacing[3]} ${spacing[5]}`,
+      background: 'transparent',
+      border: 'none',
+      borderBottom: `2px solid ${active ? colors.primary : 'transparent'}`,
+      color: active ? colors.primary : colors.mutedForeground,
+      fontFamily: fontFamily.display,
+      fontSize: fontSize.lg,
+      fontWeight: active ? fontWeight.medium : fontWeight.normal,
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
+    }}
+  >
+    <span style={{ display: 'flex', color: active ? colors.primary : colors.mutedForeground }}>
+      {icon}
+    </span>
+    {children}
+  </button>
+);
+
+const ControlButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  color?: string;
+  colors: ThemeColors;
+}> = ({ icon, label, onClick, color, colors }) => (
+  <button
+    onClick={onClick}
+    title={label}
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing[1],
+      padding: spacing[3],
+      minHeight: '60px',
+      background: colors.surfaceElevated,
+      border: `1px solid ${colors.border}`,
+      borderRadius: borderRadius.lg,
+      color: color || colors.mutedForeground,
+      cursor: 'pointer',
+      transition: 'all 0.15s ease',
     }}
   >
     {icon}
-    {children}
+    <span style={{ fontSize: fontSize.xs, fontWeight: fontWeight.medium }}>{label}</span>
   </button>
 );

@@ -64,9 +64,12 @@ export class RemotePuppetClient {
   }
 
   async connect(): Promise<void> {
-    this.signaling.connect();
+    // Wait for signaling connection to be fully established
+    await this.signaling.connect();
 
+    // Now get TURN credentials after connection is ready
     const turn = await this.signaling.getTurnCredentials();
+    console.log('[RemotePuppet] TURN credentials received:', turn);
     if (turn) {
       this.webrtc.setIceServers([
         { urls: 'stun:stun.l.google.com:19302' },
@@ -76,6 +79,9 @@ export class RemotePuppetClient {
           credential: turn.credential,
         },
       ]);
+      console.log('[RemotePuppet] ICE servers configured with TURN');
+    } else {
+      console.warn('[RemotePuppet] No TURN credentials received, using STUN only');
     }
   }
 
@@ -92,15 +98,18 @@ export class RemotePuppetClient {
   }
 
   async joinSession(deviceId: string): Promise<{ success: boolean; error?: string }> {
+    console.log('[RemotePuppet] joinSession called for device:', deviceId);
     const result = await this.signaling.joinSession(deviceId);
+    console.log('[RemotePuppet] joinSession result:', result);
     if (!result.success) {
       return result;
     }
 
     this.currentDeviceId = deviceId;
+    console.log('[RemotePuppet] Waiting for offer from Android device...');
 
-    const offer = await this.webrtc.createOffer();
-    this.signaling.sendOffer(deviceId, offer);
+    // Android will send offer when it receives session:join event
+    // We just wait for it and handle it in setupSignalingEvents
 
     return { success: true };
   }
@@ -164,6 +173,55 @@ export class RemotePuppetClient {
   sendRecent(): boolean {
     console.log('[RemotePuppet] sendRecent called');
     return this.sendControl({ type: 'recent' });
+  }
+
+  sendPowerDialog(): boolean {
+    console.log('[RemotePuppet] sendPowerDialog called');
+    return this.sendControl({ type: 'power_dialog' });
+  }
+
+  sendLockScreen(): boolean {
+    console.log('[RemotePuppet] sendLockScreen called');
+    return this.sendControl({ type: 'lock_screen' });
+  }
+
+  sendScreenshot(): boolean {
+    console.log('[RemotePuppet] sendScreenshot called');
+    return this.sendControl({ type: 'screenshot' });
+  }
+
+  async reconnect(): Promise<{ success: boolean; error?: string }> {
+    console.log('[RemotePuppet] reconnect called');
+    const deviceId = this.currentDeviceId;
+    if (!deviceId) {
+      return { success: false, error: 'No active session to reconnect' };
+    }
+
+    // Close WebRTC without losing deviceId
+    this.webrtc.close();
+
+    // Try to leave old session (may fail if already cleaned up, that's OK)
+    try {
+      await this.signaling.leaveSession(deviceId);
+    } catch (e) {
+      console.warn('[RemotePuppet] leaveSession during reconnect failed (expected):', e);
+    }
+    this.currentDeviceId = null;
+
+    // Rejoin session
+    const result = await this.joinSession(deviceId);
+
+    if (!result.success) {
+      // Preserve deviceId so the user can retry reconnect
+      this.currentDeviceId = deviceId;
+      console.error('[RemotePuppet] reconnect failed:', result.error);
+    }
+
+    return result;
+  }
+
+  getCurrentDeviceId(): string | null {
+    return this.currentDeviceId;
   }
 
   sendShellCommand(command: string, sessionId = 'default'): boolean {
@@ -318,20 +376,32 @@ export class RemotePuppetClient {
 
   private setupSignalingEvents(): void {
     this.signaling.on('onConnectionStateChange', (state) => {
+      console.log('[RemotePuppet] Signaling connection state changed:', state);
       this.events.onConnectionStateChange?.(state);
     });
 
-    this.signaling.on('onAnswer', async (deviceId, sdp) => {
+    // Handle offer from Android (Android creates offer, Desktop creates answer)
+    this.signaling.on('onOffer', async (deviceId, sdp) => {
+      console.log('[RemotePuppet] *** OFFER RECEIVED *** from device:', deviceId);
+      console.log('[RemotePuppet] Offer SDP type:', sdp.type);
       if (deviceId === this.currentDeviceId) {
-        await this.webrtc.handleAnswer(sdp);
+        console.log('[RemotePuppet] Creating answer for offer...');
+        const answer = await this.webrtc.handleOffer(sdp);
+        console.log('[RemotePuppet] Answer created, sending to device...');
+        this.signaling.sendAnswer(deviceId, answer);
+        console.log('[RemotePuppet] Answer sent to device:', deviceId);
+      } else {
+        console.warn('[RemotePuppet] Offer from unknown device:', deviceId, 'current:', this.currentDeviceId);
       }
     });
 
     this.signaling.on('onIceCandidate', async (_targetId, candidate) => {
+      console.log('[RemotePuppet] ICE candidate received from:', _targetId);
       await this.webrtc.handleIceCandidate(candidate);
     });
 
     this.signaling.on('onError', (error) => {
+      console.error('[RemotePuppet] Signaling error:', error);
       this.events.onError?.(error);
     });
   }

@@ -1,207 +1,239 @@
 import React from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
-import { MdPhoneAndroid, MdSettings, MdLogout } from 'react-icons/md';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Smartphone,
+  Folder,
+  Settings,
+  LogOut,
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useTranslation } from '../store/settingsStore';
+import { spacing, borderRadius, sizing, fontFamily, fontSize, fontWeight, useTheme } from '../design-system';
 
 export const Layout: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuthStore();
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const location = useLocation();
+
+  // Hide sidebar on login page
+  const showSidebar = isAuthenticated && !location.pathname.includes('/login');
 
   return (
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
         height: '100vh',
-        background: 'var(--bg-primary)',
+        background: colors.background,
+        position: 'relative',
       }}
     >
-      {/* Header / Title Bar */}
-      <header
+      {/* Global Drag Region - overlays on top */}
+      <div
         className="drag-region"
         style={{
-          height: 'var(--header-height)',
-          background: 'linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%)',
-          borderBottom: '1px solid var(--border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingLeft: 'var(--traffic-light-offset)',
-          paddingRight: '16px',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '38px',
+          zIndex: 10,
         }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: 'var(--accent)',
-              boxShadow: '0 0 10px var(--accent)',
-            }}
-          />
-          <span
-            style={{
-              fontSize: '14px',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              letterSpacing: '0.5px',
-            }}
-          >
-            Remote Puppet
-          </span>
-        </div>
-        {isAuthenticated && (
-          <div
-            className="no-drag"
-            style={{ display: 'flex', alignItems: 'center', gap: '16px' }}
-          >
-            <span
-              style={{
-                fontSize: '12px',
-                color: 'var(--text-secondary)',
-                padding: '4px 10px',
-                background: 'var(--bg-elevated)',
-                borderRadius: '4px',
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              {user?.email}
-            </span>
-            <button
-              onClick={logout}
-              className="btn btn-ghost"
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                gap: '4px',
-              }}
-            >
-              <MdLogout size={14} />
-              Logout
-            </button>
-          </div>
-        )}
-      </header>
+      />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar */}
-        {isAuthenticated && (
-          <aside
-            style={{
-              width: 'var(--sidebar-width)',
-              background: 'var(--bg-secondary)',
-              borderRight: '1px solid var(--border-color)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
-            <nav style={{ padding: '20px 12px', flex: 1 }}>
-              <div style={{ marginBottom: '8px', padding: '0 12px' }}>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  Navigation
-                </span>
-              </div>
-              <NavItem to="/devices" icon={<MdPhoneAndroid size={18} />} label="Devices" />
-              <NavItem to="/settings" icon={<MdSettings size={18} />} label="Settings" />
-            </nav>
-
-            {/* Sidebar Footer */}
-            <div
-              style={{
-                padding: '16px',
-                borderTop: '1px solid var(--border-color)',
-                background: 'var(--bg-tertiary)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontSize: '11px',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                <div
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: 'var(--success)',
-                    boxShadow: '0 0 6px var(--success)',
-                  }}
-                />
-                <span>Connected to server</span>
-              </div>
-            </div>
-          </aside>
-        )}
-
-        {/* Main Content */}
-        <main
+      {/* Sidebar */}
+      {showSidebar && (
+        <aside
           style={{
-            flex: 1,
-            overflow: 'auto',
-            padding: isAuthenticated ? '24px 32px' : 0,
-            background: 'var(--bg-primary)',
+            width: sizing.sidebar,
+            background: colors.background,
+            borderRight: `1px solid ${colors.border}`,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: `38px ${spacing[6]} ${spacing[8]}`,
           }}
         >
-          <Outlet />
-        </main>
-      </div>
+          {/* Top Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[8] }}>
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+              <div
+                style={{
+                  width: sizing.logoMarkSmall,
+                  height: sizing.logoMarkSmall,
+                  borderRadius: borderRadius.sm,
+                  background: colors.primary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Smartphone size={18} color={colors.foreground} />
+              </div>
+              <span
+                style={{
+                  fontFamily: fontFamily.display,
+                  fontSize: fontSize['2xl'],
+                  fontWeight: fontWeight.semibold,
+                  color: colors.foreground,
+                }}
+              >
+                Hoplin Mobile Puppet
+              </span>
+            </div>
+
+            {/* Navigation */}
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+              <NavItem
+                to="/devices"
+                icon={<LayoutDashboard size={20} />}
+                label={t('nav.devices')}
+                colors={colors}
+              />
+              <NavItem
+                to="/folders"
+                icon={<Folder size={20} />}
+                label={t('nav.folders')}
+                colors={colors}
+              />
+              <NavItem
+                to="/settings"
+                icon={<Settings size={20} />}
+                label={t('nav.settings')}
+                colors={colors}
+              />
+            </nav>
+          </div>
+
+          {/* Bottom Section - User Profile */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[3],
+              padding: `${spacing[3]} ${spacing[4]}`,
+              borderRadius: borderRadius.sm,
+              border: `1px solid ${colors.border}`,
+            }}
+          >
+            <div
+              style={{
+                width: sizing.avatar,
+                height: sizing.avatar,
+                borderRadius: borderRadius.full,
+                background: colors.primary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: fontFamily.display,
+                fontSize: fontSize.lg,
+                fontWeight: fontWeight.semibold,
+                color: colors.foreground,
+              }}
+            >
+              {user?.firstName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: fontFamily.display,
+                  fontSize: fontSize.lg,
+                  fontWeight: fontWeight.medium,
+                  color: colors.foreground,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {user?.firstName || user?.email?.split('@')[0] || 'User'}
+              </div>
+              <div
+                style={{
+                  fontSize: fontSize.sm,
+                  color: colors.mutedForeground,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {user?.email || ''}
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: spacing[2],
+                cursor: 'pointer',
+                color: colors.mutedForeground,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: borderRadius.sm,
+                transition: 'all 0.2s',
+              }}
+              title={t('nav.logout')}
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Main Content */}
+      <main
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          background: colors.background,
+          paddingTop: showSidebar ? 0 : '38px', // space for traffic lights when no sidebar
+        }}
+      >
+        <Outlet />
+      </main>
     </div>
   );
 };
 
-const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string }> = ({
-  to,
-  icon,
-  label,
-}) => (
+interface NavItemProps {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  colors: import('../design-system').ThemeColors;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ to, icon, label, colors }) => (
   <NavLink
     to={to}
     style={({ isActive }) => ({
       display: 'flex',
       alignItems: 'center',
-      gap: '12px',
-      padding: '12px 16px',
-      borderRadius: '8px',
+      gap: spacing[3],
+      padding: `${spacing[3]} ${spacing[4]}`,
+      borderRadius: borderRadius.sm,
       textDecoration: 'none',
-      color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-      backgroundColor: isActive ? 'var(--accent-dim)' : 'transparent',
-      marginBottom: '4px',
-      transition: 'all 0.2s',
-      border: isActive ? '1px solid rgba(0, 212, 170, 0.2)' : '1px solid transparent',
-      position: 'relative' as const,
-      overflow: 'hidden',
+      color: isActive ? colors.foreground : colors.mutedForeground,
+      backgroundColor: isActive ? colors.surface : 'transparent',
+      transition: 'all 0.15s ease',
     })}
   >
     {({ isActive }) => (
       <>
-        {isActive && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '3px',
-              height: '20px',
-              background: 'var(--accent)',
-              borderRadius: '0 2px 2px 0',
-            }}
-          />
-        )}
-        <span style={{ display: 'flex', alignItems: 'center' }}>{icon}</span>
-        <span style={{ fontWeight: 500, fontSize: '13px' }}>{label}</span>
+        <span style={{ display: 'flex', color: isActive ? colors.primary : colors.mutedForeground }}>
+          {icon}
+        </span>
+        <span
+          style={{
+            fontFamily: fontFamily.display,
+            fontSize: fontSize.lg,
+            fontWeight: isActive ? fontWeight.medium : fontWeight.normal,
+          }}
+        >
+          {label}
+        </span>
       </>
     )}
   </NavLink>

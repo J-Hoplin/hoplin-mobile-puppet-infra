@@ -121,6 +121,28 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     return clientRef.current?.sendRecent() ?? false;
   }, []);
 
+  const sendPowerDialog = useCallback(() => {
+    return clientRef.current?.sendPowerDialog() ?? false;
+  }, []);
+
+  const sendLockScreen = useCallback(() => {
+    return clientRef.current?.sendLockScreen() ?? false;
+  }, []);
+
+  const sendScreenshot = useCallback(() => {
+    return clientRef.current?.sendScreenshot() ?? false;
+  }, []);
+
+  const reconnect = useCallback(async () => {
+    // Reset UI state before reconnecting so stale data doesn't linger
+    store.setStream(null);
+    store.setWebRTCState('closed' as RTCPeerConnectionState);
+    store.setMetrics(null);
+
+    const result = await clientRef.current?.reconnect();
+    return result;
+  }, []);
+
   const sendShellCommand = useCallback((command: string, sessionId = 'default') => {
     return clientRef.current?.sendShellCommand(command, sessionId) ?? false;
   }, []);
@@ -207,6 +229,10 @@ export function useRemoteDevice(options: UseRemoteDeviceOptions) {
     sendBack,
     sendHome,
     sendRecent,
+    sendPowerDialog,
+    sendLockScreen,
+    sendScreenshot,
+    reconnect,
     sendShellCommand,
     requestFileList,
     downloadFile,

@@ -8,10 +8,6 @@ export interface RemoteScreenProps {
   className?: string;
   style?: React.CSSProperties;
   aspectRatio?: number;
-  showControls?: boolean;
-  onBack?: () => void;
-  onHome?: () => void;
-  onRecent?: () => void;
 }
 
 export const RemoteScreen: React.FC<RemoteScreenProps> = ({
@@ -22,10 +18,6 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   className,
   style,
   aspectRatio: propAspectRatio,
-  showControls = true,
-  onBack,
-  onHome,
-  onRecent,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,9 +28,6 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   const aspectRatio = videoDimensions
     ? videoDimensions.width / videoDimensions.height
     : (propAspectRatio || 9 / 16);
-
-  // Determine if landscape mode
-  const isLandscape = aspectRatio > 1;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -176,41 +165,39 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
       className={className}
       style={{
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '8px',
         width: '100%',
         height: '100%',
         ...style,
       }}
     >
+      {/* Phone Bezel */}
       <div
         style={{
-          position: 'relative',
           display: 'flex',
-          justifyContent: 'center',
+          flexDirection: 'column',
           alignItems: 'center',
-          flex: 1,
-          // Fill available space while respecting aspect ratio
+          justifyContent: 'center',
+          background: '#1A1A1A',
+          borderRadius: '24px',
+          padding: '12px',
           width: '100%',
-          minHeight: 0, // Important for flex child to shrink
+          height: '100%',
+          boxSizing: 'border-box',
           overflow: 'hidden',
         }}
       >
+        {/* Phone Screen */}
         <div
           style={{
             position: 'relative',
-            // Use max dimensions and aspect ratio to fit within container
-            maxWidth: '100%',
-            maxHeight: '100%',
             aspectRatio: String(aspectRatio),
-            // Both dimensions are constrained by max, but one dimension is 100%
-            // Height-based for portrait (video is tall), width-based for landscape (video is wide)
-            height: isLandscape ? 'auto' : '100%',
-            width: isLandscape ? '100%' : 'auto',
-            backgroundColor: '#000',
-            borderRadius: '8px',
+            minHeight: 0,
+            height: '100%',
+            maxWidth: '100%',
+            backgroundColor: '#0D0D0D',
+            borderRadius: '16px',
             overflow: 'hidden',
           }}
         >
@@ -238,63 +225,24 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                color: '#666',
+                color: '#606060',
                 textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px',
               }}
             >
-              <p>No stream</p>
-              <p style={{ fontSize: '12px' }}>Waiting for connection...</p>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#404040" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+              <span style={{ fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>Waiting for connection...</span>
             </div>
           )}
         </div>
       </div>
-
-      {showControls && (
-        <div
-          style={{
-            display: 'flex',
-            gap: '16px',
-            padding: '8px',
-          }}
-        >
-          <button
-            onClick={onBack}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            ◀ Back
-          </button>
-          <button
-            onClick={onHome}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            ● Home
-          </button>
-          <button
-            onClick={onRecent}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              background: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            ■ Recent
-          </button>
-        </div>
-      )}
     </div>
   );
 };

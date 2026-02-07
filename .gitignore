@@ -13,6 +13,8 @@ release/
 .env.*.local
 .env.development
 .env.production
+.env.docker
+docker/.env.docker
 
 # IDE
 .idea/

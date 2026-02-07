@@ -75,6 +75,8 @@ export class SignalingGateway
         client.clientType = 'device';
 
         this.connectedDevices.set(payload.sub, client.id);
+        this.logger.log(`Device ${payload.sub} added to connectedDevices. Socket ID: ${client.id}`);
+        this.logger.log(`Current connectedDevices: [${Array.from(this.connectedDevices.keys()).join(', ')}]`);
 
         await this.devicesService.updateDeviceStatus(
           payload.sub,
@@ -89,7 +91,7 @@ export class SignalingGateway
           status: 'ONLINE',
         });
 
-        this.logger.log(`Device ${payload.sub} connected`);
+        this.logger.log(`Device ${payload.sub} connected and registered`);
       } else {
         client.userId = payload.sub;
         client.clientType = 'user';
@@ -109,8 +111,12 @@ export class SignalingGateway
   }
 
   async handleDisconnect(client: AuthenticatedSocket) {
+    this.logger.log(`Client disconnecting: type=${client.clientType}, deviceId=${client.deviceId}, userId=${client.userId}, socketId=${client.id}`);
+
     if (client.clientType === 'device' && client.deviceId) {
       this.connectedDevices.delete(client.deviceId);
+      this.logger.log(`Device ${client.deviceId} removed from connectedDevices`);
+      this.logger.log(`Remaining connectedDevices: [${Array.from(this.connectedDevices.keys()).join(', ')}]`);
 
       await this.devicesService.updateDeviceStatus(
         client.deviceId,
@@ -170,8 +176,11 @@ export class SignalingGateway
     }
 
     if (!this.connectedDevices.has(data.deviceId)) {
+      this.logger.error(`Device ${data.deviceId} NOT in connectedDevices!`);
+      this.logger.error(`Current connectedDevices: [${Array.from(this.connectedDevices.keys()).join(', ')}]`);
       return { error: 'Device is offline' };
     }
+    this.logger.log(`Device ${data.deviceId} is connected, proceeding with session join`);
 
     const room = `device:${data.deviceId}`;
     client.join(room);
@@ -215,6 +224,7 @@ export class SignalingGateway
     });
 
     this.logger.log(`User ${client.userId} joined session for device ${data.deviceId}`);
+    this.logger.log(`Connected devices: [${Array.from(this.connectedDevices.keys()).join(', ')}]`);
 
     return {
       success: true,
@@ -265,23 +275,39 @@ export class SignalingGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: WebRTCOffer,
   ) {
-    if (client.clientType !== 'user') {
-      return { error: 'Only users can send offers' };
+    // Device sends offer to user (Android creates offer for video sending)
+    if (client.clientType === 'device') {
+      this.logger.log(`*** OFFER *** from device ${client.deviceId} to user ${data.targetUserId}`);
+
+      this.server.to(`user:${data.targetUserId}`).emit(SignalType.OFFER, {
+        deviceId: client.deviceId,
+        sdp: data.sdp,
+      });
+
+      this.logger.log(`Offer forwarded to user: ${data.targetUserId}`);
+      return { success: true };
     }
 
-    const deviceSocketId = this.connectedDevices.get(data.targetDeviceId);
-    if (!deviceSocketId) {
-      return { error: 'Device is offline' };
+    // Legacy: User sends offer to device (kept for backward compatibility)
+    if (client.clientType === 'user' && data.targetDeviceId) {
+      const deviceSocketId = this.connectedDevices.get(data.targetDeviceId);
+      this.logger.log(`*** OFFER *** from user ${client.userId} to device ${data.targetDeviceId}, deviceSocketId: ${deviceSocketId}`);
+
+      if (!deviceSocketId) {
+        this.logger.error(`Device ${data.targetDeviceId} is offline or not connected`);
+        return { error: 'Device is offline' };
+      }
+
+      this.server.to(deviceSocketId).emit(SignalType.OFFER, {
+        userId: client.userId,
+        sdp: data.sdp,
+      });
+
+      this.logger.log(`Offer forwarded to device socket: ${deviceSocketId}`);
+      return { success: true };
     }
 
-    this.server.to(deviceSocketId).emit(SignalType.OFFER, {
-      userId: client.userId,
-      sdp: data.sdp,
-    });
-
-    this.logger.debug(`Offer from user ${client.userId} to device ${data.targetDeviceId}`);
-
-    return { success: true };
+    return { error: 'Invalid client type' };
   }
 
   @SubscribeMessage(SignalType.ANSWER)
@@ -289,18 +315,39 @@ export class SignalingGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() data: WebRTCAnswer,
   ) {
-    if (client.clientType !== 'device') {
-      return { error: 'Only devices can send answers' };
+    // User sends answer to device (Desktop responds to Android's offer)
+    if (client.clientType === 'user' && data.targetDeviceId) {
+      const deviceSocketId = this.connectedDevices.get(data.targetDeviceId);
+      this.logger.log(`*** ANSWER *** from user ${client.userId} to device ${data.targetDeviceId}, deviceSocketId: ${deviceSocketId}`);
+
+      if (!deviceSocketId) {
+        this.logger.error(`Device ${data.targetDeviceId} is offline or not connected`);
+        return { error: 'Device is offline' };
+      }
+
+      this.server.to(deviceSocketId).emit(SignalType.ANSWER, {
+        userId: client.userId,
+        sdp: data.sdp,
+      });
+
+      this.logger.log(`Answer forwarded to device socket: ${deviceSocketId}`);
+      return { success: true };
     }
 
-    this.server.to(`user:${data.targetUserId}`).emit(SignalType.ANSWER, {
-      deviceId: client.deviceId,
-      sdp: data.sdp,
-    });
+    // Legacy: Device sends answer to user (kept for backward compatibility)
+    if (client.clientType === 'device') {
+      this.logger.log(`*** ANSWER *** from device ${client.deviceId} to user ${data.targetUserId}`);
 
-    this.logger.debug(`Answer from device ${client.deviceId} to user ${data.targetUserId}`);
+      this.server.to(`user:${data.targetUserId}`).emit(SignalType.ANSWER, {
+        deviceId: client.deviceId,
+        sdp: data.sdp,
+      });
 
-    return { success: true };
+      this.logger.log(`Answer forwarded to user: ${data.targetUserId}`);
+      return { success: true };
+    }
+
+    return { error: 'Invalid client type' };
   }
 
   @SubscribeMessage(SignalType.ICE_CANDIDATE)
@@ -310,6 +357,7 @@ export class SignalingGateway
   ) {
     if (client.clientType === 'user') {
       const deviceSocketId = this.connectedDevices.get(data.targetId);
+      this.logger.debug(`ICE candidate from user ${client.userId} to device ${data.targetId}, socketId: ${deviceSocketId}`);
       if (deviceSocketId) {
         this.server.to(deviceSocketId).emit(SignalType.ICE_CANDIDATE, {
           userId: client.userId,
@@ -317,6 +365,7 @@ export class SignalingGateway
         });
       }
     } else if (client.clientType === 'device') {
+      this.logger.debug(`ICE candidate from device ${client.deviceId} to user ${data.targetId}`);
       this.server.to(`user:${data.targetId}`).emit(SignalType.ICE_CANDIDATE, {
         deviceId: client.deviceId,
         candidate: data.candidate,
@@ -359,7 +408,28 @@ export class SignalingGateway
 
   @SubscribeMessage('turn:credentials')
   handleTurnCredentials() {
-    return this.getTurnCredentials();
+    const credentials = this.getTurnCredentials();
+    this.logger.log(`TURN credentials requested - URL: ${credentials.urls}, Username: ${credentials.username}`);
+    return credentials;
+  }
+
+  /**
+   * Handle device heartbeat.
+   * Updates the device's lastSeenAt timestamp to prevent it from being marked as offline.
+   */
+  @SubscribeMessage('device:heartbeat')
+  async handleDeviceHeartbeat(@ConnectedSocket() client: AuthenticatedSocket) {
+    if (client.clientType !== 'device' || !client.deviceId) {
+      return { error: 'Only devices can send heartbeats' };
+    }
+
+    try {
+      await this.devicesService.updateDeviceHeartbeat(client.deviceId);
+      return { success: true, timestamp: new Date().toISOString() };
+    } catch (error) {
+      this.logger.error(`Failed to update heartbeat for device ${client.deviceId}: ${error.message}`);
+      return { error: 'Failed to update heartbeat' };
+    }
   }
 
   // Public method to send events to connected devices
