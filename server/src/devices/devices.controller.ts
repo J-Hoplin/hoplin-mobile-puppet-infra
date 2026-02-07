@@ -67,11 +67,18 @@ export class DevicesController {
     @CurrentUser('id') userId: string,
   ): Promise<DeviceResponseDto[]> {
     const devices = await this.devicesService.getDevices(userId);
-    return devices.map((device) => ({
-      ...device,
-      capabilities: device.capabilities as Record<string, unknown> | undefined,
-      lastSeenAt: device.lastSeenAt ?? undefined,
-    }));
+    return devices.map((device) => {
+      const caps = device.capabilities as Record<string, unknown> | undefined;
+      return {
+        ...device,
+        model: (caps?.deviceModel as string) || undefined,
+        osVersion: caps?.androidVersion
+          ? `Android ${caps.androidVersion}`
+          : (caps?.osVersion as string) || undefined,
+        capabilities: caps,
+        lastSeenAt: device.lastSeenAt ?? undefined,
+      };
+    });
   }
 
   @Get(':id')

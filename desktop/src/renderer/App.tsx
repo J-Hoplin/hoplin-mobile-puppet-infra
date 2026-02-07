@@ -6,6 +6,7 @@ import { DevicesPage } from './pages/DevicesPage';
 import { ControlPage } from './pages/ControlPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { FolderManagementPage } from './pages/FolderManagementPage';
+import { FolderDetailPage } from './pages/FolderDetailPage';
 import { useAuthStore } from './store/authStore';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -59,6 +60,14 @@ const App: React.FC = () => {
           element={
             <PrivateRoute>
               <FolderManagementPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/folders/:folderId"
+          element={
+            <PrivateRoute>
+              <FolderDetailPage />
             </PrivateRoute>
           }
         />

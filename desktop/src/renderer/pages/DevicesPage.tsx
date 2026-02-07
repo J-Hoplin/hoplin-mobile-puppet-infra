@@ -13,6 +13,8 @@ import {
   MoreVertical,
   Monitor,
   GripVertical,
+  Search,
+  ArrowUpDown,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useFolderStore } from '../store/folderStore';
@@ -70,8 +72,13 @@ interface Device {
   authCode?: string;
   folderId?: string;
   folderName?: string;
+  folder?: { id: string; name: string };
+  capabilities?: Record<string, unknown>;
   lastSeenAt?: string;
 }
+
+type SortField = 'name' | 'model';
+type SortDirection = 'asc' | 'desc';
 
 export const DevicesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -102,6 +109,11 @@ export const DevicesPage: React.FC = () => {
   // Action dropdown state
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
+  // Search and sort state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
   // Drag and drop state
   const [draggedDeviceId, setDraggedDeviceId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
@@ -125,7 +137,10 @@ export const DevicesPage: React.FC = () => {
   useEffect(() => {
     fetchDevices();
     fetchFolders();
-    const interval = setInterval(fetchDevices, 5000);
+    const interval = setInterval(() => {
+      fetchDevices();
+      fetchFolders();
+    }, 5000);
     return () => clearInterval(interval);
   }, [fetchDevices, fetchFolders]);
 
@@ -286,10 +301,34 @@ export const DevicesPage: React.FC = () => {
     setDragOverFolderId(null);
   };
 
-  // Filter devices by selected folder
-  const filteredDevices = selectedFolderId
-    ? devices.filter((d) => d.folderId === selectedFolderId)
-    : devices;
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filter devices by selected folder and search query
+  const filteredDevices = devices
+    .filter((d) => {
+      if (selectedFolderId && d.folderId !== selectedFolderId) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const name = d.name?.toLowerCase() || '';
+        const model = d.model?.toLowerCase() || '';
+        return name.includes(q) || model.includes(q);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (!sortField) return 0;
+      const aVal = (a[sortField] || '').toLowerCase();
+      const bVal = (b[sortField] || '').toLowerCase();
+      const cmp = aVal.localeCompare(bVal);
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
 
   // Count devices
   const totalDevices = devices.length;
@@ -544,6 +583,57 @@ export const DevicesPage: React.FC = () => {
             flexDirection: 'column',
           }}
         >
+          {/* Device Header with search */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: `${spacing[4]} ${spacing[5]}`,
+              borderBottom: `1px solid ${colors.border}`,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fontFamily.display,
+                fontSize: fontSize.lg,
+                fontWeight: fontWeight.semibold,
+                color: colors.foreground,
+              }}
+            >
+              {selectedFolderId
+                ? `${folders.find((f) => f.id === selectedFolderId)?.name || ''} (${filteredDevices.length})`
+                : `${t('devices.allDevices')} (${totalDevices})`}
+            </span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                padding: `${spacing[2]} ${spacing[4]}`,
+                border: `1px solid ${colors.border}`,
+                borderRadius: borderRadius.md,
+                background: 'transparent',
+              }}
+            >
+              <Search size={14} color={colors.mutedForeground} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('devices.searchPlaceholder') || 'Search devices...'}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: colors.foreground,
+                  fontFamily: fontFamily.primary,
+                  fontSize: fontSize.sm,
+                  width: '160px',
+                }}
+              />
+            </div>
+          </div>
           {filteredDevices.length === 0 ? (
             <div
               style={{
@@ -599,31 +689,43 @@ export const DevicesPage: React.FC = () => {
                 <thead>
                   <tr style={{ background: colors.surfaceElevated }}>
                     <th
+                      onClick={() => handleSort('name')}
                       style={{
                         textAlign: 'left',
                         padding: `${spacing[3]} ${spacing[4]}`,
-                        paddingLeft: '62px', // 14px grip + 8px gap + 32px icon + 8px gap
+                        paddingLeft: '62px',
                         fontFamily: fontFamily.primary,
                         fontSize: fontSize.sm,
                         fontWeight: fontWeight.medium,
-                        color: colors.mutedForeground,
+                        color: sortField === 'name' ? colors.foreground : colors.mutedForeground,
                         borderBottom: `1px solid ${colors.border}`,
+                        cursor: 'pointer',
+                        userSelect: 'none',
                       }}
                     >
-                      {t('devices.deviceName')}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {t('devices.deviceName')}
+                        <ArrowUpDown size={12} />
+                      </span>
                     </th>
                     <th
+                      onClick={() => handleSort('model')}
                       style={{
                         textAlign: 'left',
                         padding: `${spacing[3]} ${spacing[4]}`,
                         fontFamily: fontFamily.primary,
                         fontSize: fontSize.sm,
                         fontWeight: fontWeight.medium,
-                        color: colors.mutedForeground,
+                        color: sortField === 'model' ? colors.foreground : colors.mutedForeground,
                         borderBottom: `1px solid ${colors.border}`,
+                        cursor: 'pointer',
+                        userSelect: 'none',
                       }}
                     >
-                      {t('devices.model')}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {t('devices.model')}
+                        <ArrowUpDown size={12} />
+                      </span>
                     </th>
                     <th
                       style={{
@@ -804,7 +906,7 @@ export const DevicesPage: React.FC = () => {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {device.folderName || '-'}
+                        {device.folder?.name || device.folderName || '-'}
                       </td>
 
                       {/* Actions */}

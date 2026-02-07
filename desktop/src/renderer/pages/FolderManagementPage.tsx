@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Folder, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useFolderStore } from '../store/folderStore';
 import { useTranslation } from '../store/settingsStore';
@@ -13,6 +14,7 @@ import {
 } from '../design-system';
 
 export const FolderManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } = useFolderStore();
@@ -23,6 +25,8 @@ export const FolderManagementPage: React.FC = () => {
 
   useEffect(() => {
     fetchFolders();
+    const interval = setInterval(fetchFolders, 5000);
+    return () => clearInterval(interval);
   }, [fetchFolders]);
 
   const handleCreateFolder = async () => {
@@ -113,6 +117,7 @@ export const FolderManagementPage: React.FC = () => {
           {folders.map((folder) => (
             <div
               key={folder.id}
+              onClick={() => navigate(`/folders/${folder.id}`)}
               style={{
                 width: sizing.folderCard,
                 background: colors.surface,
@@ -122,6 +127,8 @@ export const FolderManagementPage: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: spacing[4],
+                cursor: 'pointer',
+                transition: 'border-color 0.15s ease',
               }}
             >
               {/* Folder Header */}
@@ -216,7 +223,7 @@ export const FolderManagementPage: React.FC = () => {
                 }}
               >
                 <button
-                  onClick={() => setEditingFolder({ id: folder.id, name: folder.name })}
+                  onClick={(e) => { e.stopPropagation(); setEditingFolder({ id: folder.id, name: folder.name }); }}
                   style={{
                     flex: 1,
                     display: 'flex',
@@ -236,7 +243,7 @@ export const FolderManagementPage: React.FC = () => {
                   {t('common.edit')}
                 </button>
                 <button
-                  onClick={() => handleDeleteFolder(folder.id)}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
                   style={{
                     flex: 1,
                     display: 'flex',

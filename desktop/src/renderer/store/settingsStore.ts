@@ -136,6 +136,11 @@ export const translations: Record<Language, Record<string, string>> = {
     // Folders Page
     'folders.description': '기기 그룹을 관리합니다',
     'folders.noFoldersHint': '새 폴더를 만들어 기기를 정리하세요',
+    'folders.totalDevices': '총 기기 수',
+    'folders.online': '온라인',
+    'folders.offline': '오프라인',
+    'folders.deviceList': '기기 목록',
+    'folders.unit': '대',
 
     // Auth
     'auth.login': '로그인',
@@ -254,6 +259,11 @@ export const translations: Record<Language, Record<string, string>> = {
     // Folders Page
     'folders.description': 'Manage device groups',
     'folders.noFoldersHint': 'Create folders to organize devices',
+    'folders.totalDevices': 'Total Devices',
+    'folders.online': 'Online',
+    'folders.offline': 'Offline',
+    'folders.deviceList': 'Device List',
+    'folders.unit': '',
 
     // Auth
     'auth.login': 'Login',
@@ -372,6 +382,11 @@ export const translations: Record<Language, Record<string, string>> = {
     // Folders Page
     'folders.description': 'デバイスグループを管理します',
     'folders.noFoldersHint': 'フォルダを作成してデバイスを整理',
+    'folders.totalDevices': 'デバイス総数',
+    'folders.online': 'オンライン',
+    'folders.offline': 'オフライン',
+    'folders.deviceList': 'デバイスリスト',
+    'folders.unit': '台',
 
     // Auth
     'auth.login': 'ログイン',

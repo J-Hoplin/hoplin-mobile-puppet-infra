@@ -26,6 +26,12 @@ export class DeviceResponseDto {
   folder?: FolderInfoDto | null;
 
   @ApiPropertyOptional()
+  model?: string;
+
+  @ApiPropertyOptional()
+  osVersion?: string;
+
+  @ApiPropertyOptional()
   capabilities?: Record<string, unknown>;
 
   @ApiPropertyOptional()
