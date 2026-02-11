@@ -8,6 +8,7 @@ export interface RemoteScreenProps {
   className?: string;
   style?: React.CSSProperties;
   aspectRatio?: number;
+  isVisible?: boolean;
 }
 
 export const RemoteScreen: React.FC<RemoteScreenProps> = ({
@@ -18,6 +19,7 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   className,
   style,
   aspectRatio: propAspectRatio,
+  isVisible = true,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,13 +93,58 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
     }
   }, [stream]);
 
+  // Re-attach stream when becoming visible again (tab switch recovery)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream || !isVisible) return;
+
+    // Re-set srcObject and force play to recover from Chromium pausing
+    video.srcObject = stream;
+    video.play().then(() => {
+      console.log('[RemoteScreen] Video resumed after becoming visible');
+    }).catch(err => {
+      console.error('[RemoteScreen] Video resume failed:', err);
+    });
+  }, [isVisible, stream]);
+
   const getNormalizedCoordinates = useCallback(
     (event: React.PointerEvent<HTMLVideoElement>) => {
-      if (!videoRef.current) return null;
+      const video = videoRef.current;
+      if (!video) return null;
 
-      const rect = videoRef.current.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
+      const rect = video.getBoundingClientRect();
+      const videoW = video.videoWidth;
+      const videoH = video.videoHeight;
+
+      if (!videoW || !videoH) {
+        // Fallback if video dimensions unknown
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+        return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+      }
+
+      // Calculate actual video content area within the element (objectFit: contain)
+      const videoAspect = videoW / videoH;
+      const elemAspect = rect.width / rect.height;
+
+      let renderedW: number, renderedH: number, offsetX: number, offsetY: number;
+
+      if (videoAspect > elemAspect) {
+        // Video wider than element — letterbox top/bottom
+        renderedW = rect.width;
+        renderedH = rect.width / videoAspect;
+        offsetX = 0;
+        offsetY = (rect.height - renderedH) / 2;
+      } else {
+        // Video taller than element — pillarbox left/right
+        renderedH = rect.height;
+        renderedW = rect.height * videoAspect;
+        offsetX = (rect.width - renderedW) / 2;
+        offsetY = 0;
+      }
+
+      const x = (event.clientX - rect.left - offsetX) / renderedW;
+      const y = (event.clientY - rect.top - offsetY) / renderedH;
 
       return {
         x: Math.max(0, Math.min(1, x)),
