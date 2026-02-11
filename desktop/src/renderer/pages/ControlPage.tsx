@@ -87,6 +87,7 @@ export const ControlPage: React.FC = () => {
     createDirectory,
     cancelTransfer,
     removeFileTransfer,
+    getStats,
   } = useRemoteDevice({
     serverUrl,
     token: token!,
@@ -95,6 +96,23 @@ export const ControlPage: React.FC = () => {
 
   const [isLogsStarted, setIsLogsStarted] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [ping, setPing] = useState<number | null>(null);
+  const isStreaming = connectionState === 'connected' && webrtcState === 'connected';
+
+  // Poll WebRTC stats for ping
+  useEffect(() => {
+    if (!isStreaming) {
+      setPing(null);
+      return;
+    }
+    const interval = setInterval(async () => {
+      const stats = await getStats();
+      if (stats?.roundTripTime) {
+        setPing(Math.round(stats.roundTripTime * 1000));
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isStreaming, getStats]);
 
   const handleReconnect = useCallback(async () => {
     setIsReconnecting(true);
@@ -185,7 +203,6 @@ export const ControlPage: React.FC = () => {
     [sendShellCommand, addShellOutput]
   );
 
-  const isStreaming = connectionState === 'connected' && webrtcState === 'connected';
   const statusText =
     connectionState === 'connected'
       ? webrtcState === 'connected'
@@ -253,7 +270,7 @@ export const ControlPage: React.FC = () => {
                   color: isStreaming ? colors.success : colors.mutedForeground,
                 }}
               >
-                {statusText}
+                {statusText}{isStreaming && ping !== null ? ` (${ping}ms)` : ''}
               </span>
             </div>
           </div>

@@ -22,6 +22,7 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   isVisible = true,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -87,10 +88,29 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
         video.onresize = null;
       };
     } else {
-      // Reset when stream is removed
-      setVideoDimensions(null);
+      // Keep last known videoDimensions for aspect ratio stability on reconnect
       video.srcObject = null;
     }
+  }, [stream]);
+
+  // Periodically capture last frame to canvas (fallback for tab switch)
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !stream) return;
+
+    const interval = setInterval(() => {
+      if (video.videoWidth > 0 && video.videoHeight > 0 && !video.paused) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [stream]);
 
   // Re-attach stream when becoming visible again (tab switch recovery)
@@ -98,13 +118,8 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
     const video = videoRef.current;
     if (!video || !stream || !isVisible) return;
 
-    // Re-set srcObject and force play to recover from Chromium pausing
     video.srcObject = stream;
-    video.play().then(() => {
-      console.log('[RemoteScreen] Video resumed after becoming visible');
-    }).catch(err => {
-      console.error('[RemoteScreen] Video resume failed:', err);
-    });
+    video.play().catch(() => {});
   }, [isVisible, stream]);
 
   const getNormalizedCoordinates = useCallback(
@@ -248,6 +263,18 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
             overflow: 'hidden',
           }}
         >
+          {/* Last frame snapshot (shown when video has no new frames) */}
+          <canvas
+            ref={canvasRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              zIndex: 0,
+            }}
+          />
           <video
             ref={videoRef}
             autoPlay
@@ -258,11 +285,13 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
             onPointerMove={handlePointerMove}
             onPointerLeave={handlePointerLeave}
             style={{
+              position: 'relative',
               width: '100%',
               height: '100%',
               objectFit: 'contain',
               touchAction: 'none',
               cursor: 'pointer',
+              zIndex: 1,
             }}
           />
           {!stream && (
