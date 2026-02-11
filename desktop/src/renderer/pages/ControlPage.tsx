@@ -87,6 +87,7 @@ export const ControlPage: React.FC = () => {
     createDirectory,
     cancelTransfer,
     removeFileTransfer,
+    getStats,
   } = useRemoteDevice({
     serverUrl,
     token: token!,
@@ -95,6 +96,23 @@ export const ControlPage: React.FC = () => {
 
   const [isLogsStarted, setIsLogsStarted] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [ping, setPing] = useState<number | null>(null);
+  const isStreaming = connectionState === 'connected' && webrtcState === 'connected';
+
+  // Poll WebRTC stats for ping
+  useEffect(() => {
+    if (!isStreaming) {
+      setPing(null);
+      return;
+    }
+    const interval = setInterval(async () => {
+      const stats = await getStats();
+      if (stats?.roundTripTime) {
+        setPing(Math.round(stats.roundTripTime * 1000));
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isStreaming, getStats]);
 
   const handleReconnect = useCallback(async () => {
     setIsReconnecting(true);
@@ -185,7 +203,6 @@ export const ControlPage: React.FC = () => {
     [sendShellCommand, addShellOutput]
   );
 
-  const isStreaming = connectionState === 'connected' && webrtcState === 'connected';
   const statusText =
     connectionState === 'connected'
       ? webrtcState === 'connected'
@@ -253,7 +270,7 @@ export const ControlPage: React.FC = () => {
                   color: isStreaming ? colors.success : colors.mutedForeground,
                 }}
               >
-                {statusText}
+                {statusText}{isStreaming && ping !== null ? ` (${ping}ms)` : ''}
               </span>
             </div>
           </div>
@@ -349,9 +366,13 @@ export const ControlPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, display: 'flex', gap: spacing[5], overflow: 'hidden' }}>
-        {activeTab === 'screen' && (
-          <>
+      <div style={{ flex: 1, display: 'flex', gap: spacing[5], overflow: 'hidden', position: 'relative' }}>
+        {/* Screen tab - always rendered, other tabs overlay on top */}
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', gap: spacing[5], overflow: 'hidden',
+          zIndex: activeTab === 'screen' ? 1 : 0,
+          pointerEvents: activeTab === 'screen' ? 'auto' : 'none',
+        }}>
             {/* Phone Preview */}
             <div
               style={{
@@ -365,6 +386,7 @@ export const ControlPage: React.FC = () => {
             >
               <RemoteScreen
                 stream={stream}
+                isVisible={activeTab === 'screen'}
                 onTouchDown={sendTouchDown}
                 onTouchUp={sendTouchUp}
                 onTouchMove={sendTouchMove}
@@ -496,13 +518,12 @@ export const ControlPage: React.FC = () => {
                 <MetricsPanel metrics={metrics} showProcesses={true} maxProcesses={5} />
               </div>
             </div>
-          </>
-        )}
+        </div>
 
         {activeTab === 'shell' && (
           <div
             style={{
-              flex: 1,
+              position: 'absolute', inset: 0, zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -529,7 +550,7 @@ export const ControlPage: React.FC = () => {
         {activeTab === 'logs' && (
           <div
             style={{
-              flex: 1,
+              position: 'absolute', inset: 0, zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
@@ -628,7 +649,7 @@ export const ControlPage: React.FC = () => {
         {activeTab === 'files' && (
           <div
             style={{
-              flex: 1,
+              position: 'absolute', inset: 0, zIndex: 2,
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',

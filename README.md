@@ -186,13 +186,52 @@ Build targets: macOS (DMG/ZIP), Windows (NSIS/ZIP), Linux (AppImage/DEB)
 
 ## Environment Variables
 
-| Variable | Description | Default |
+### Local Development (`server/.env`)
+
+Used when running the server locally with `yarn dev:server`. DB and TURN run in Docker while the server runs on your host machine.
+
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://puppet:puppet@localhost:5432/remote_puppet` |
-| `JWT_SECRET` | Secret key for JWT token signing | (required) |
-| `CORS_ORIGINS` | Allowed CORS origins | `*` |
-| `TURN_CREDENTIAL` | CoTURN server password | `turnpassword` |
-| `EXTERNAL_IP` | Public IP for TURN server (production) | (optional) |
+| `DATABASE_URL` | PostgreSQL connection string (localhost) | `postgresql://postgres:postgres@localhost:5432/remote_puppet?schema=public` |
+| `JWT_SECRET` | Secret key for JWT token signing | (required, change in production) |
+| `JWT_EXPIRES_IN` | JWT token expiry | `7d` |
+| `PORT` | Server listen port | `3000` |
+| `CORS_ORIGINS` | Allowed CORS origins | `http://localhost:3000,http://localhost:5173` |
+| `TURN_SERVER_URL` | TURN server URL (use host LAN IP) | `turn:172.30.1.59:3478` |
+| `TURN_SERVER_USERNAME` | TURN auth username | `turnuser` |
+| `TURN_SERVER_CREDENTIAL` | TURN auth password | `turnpassword` |
+| `TURN_SECRET` | TURN shared secret | (required) |
+
+### Docker Deployment (`docker/.env.docker`)
+
+Used when running the full stack in Docker with `yarn docker:up`.
+
+```bash
+cp docker/.env.docker.example docker/.env.docker
+```
+
+| Variable | Description | Local vs Docker |
+|----------|-------------|-----------------|
+| `DATABASE_URL` | PostgreSQL connection string | `localhost` → `db` (Docker service name) |
+| `TURN_SERVER_URL` | TURN server URL | Must use host LAN IP (**not** Docker service name `turn`) |
+| `POSTGRES_USER` | PostgreSQL user | Used by the DB container |
+| `POSTGRES_PASSWORD` | PostgreSQL password | Used by the DB container |
+| `POSTGRES_DB` | PostgreSQL database name | Used by the DB container |
+
+> **Important:** `TURN_SERVER_URL` is the address the server sends to clients (Android/Desktop). Since clients are outside the Docker network, you must use the **host machine's actual IP**, not the Docker service name `turn`.
+
+```bash
+ipconfig getifaddr en0          # macOS
+hostname -I | awk '{print $1}'  # Linux
+```
+
+### TURN Server (`docker/turnserver.conf`)
+
+| Setting | Description | Note |
+|---------|-------------|------|
+| `external-ip` | External IP advertised to clients | Must match your host LAN IP or public IP |
+| `user` | TURN auth credentials | Must match `TURN_SERVER_USERNAME:TURN_SERVER_CREDENTIAL` in `.env` |
+| `realm` | TURN realm | Default: `remotepuppet.local` |
 
 ## Scripts
 

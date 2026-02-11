@@ -8,6 +8,7 @@ export interface RemoteScreenProps {
   className?: string;
   style?: React.CSSProperties;
   aspectRatio?: number;
+  isVisible?: boolean;
 }
 
 export const RemoteScreen: React.FC<RemoteScreenProps> = ({
@@ -18,8 +19,10 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
   className,
   style,
   aspectRatio: propAspectRatio,
+  isVisible = true,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number } | null>(null);
@@ -85,19 +88,78 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
         video.onresize = null;
       };
     } else {
-      // Reset when stream is removed
-      setVideoDimensions(null);
+      // Keep last known videoDimensions for aspect ratio stability on reconnect
       video.srcObject = null;
     }
   }, [stream]);
 
+  // Periodically capture last frame to canvas (fallback for tab switch)
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !stream) return;
+
+    const interval = setInterval(() => {
+      if (video.videoWidth > 0 && video.videoHeight > 0 && !video.paused) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [stream]);
+
+  // Re-attach stream when becoming visible again (tab switch recovery)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !stream || !isVisible) return;
+
+    video.srcObject = stream;
+    video.play().catch(() => {});
+  }, [isVisible, stream]);
+
   const getNormalizedCoordinates = useCallback(
     (event: React.PointerEvent<HTMLVideoElement>) => {
-      if (!videoRef.current) return null;
+      const video = videoRef.current;
+      if (!video) return null;
 
-      const rect = videoRef.current.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
+      const rect = video.getBoundingClientRect();
+      const videoW = video.videoWidth;
+      const videoH = video.videoHeight;
+
+      if (!videoW || !videoH) {
+        // Fallback if video dimensions unknown
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+        return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+      }
+
+      // Calculate actual video content area within the element (objectFit: contain)
+      const videoAspect = videoW / videoH;
+      const elemAspect = rect.width / rect.height;
+
+      let renderedW: number, renderedH: number, offsetX: number, offsetY: number;
+
+      if (videoAspect > elemAspect) {
+        // Video wider than element — letterbox top/bottom
+        renderedW = rect.width;
+        renderedH = rect.width / videoAspect;
+        offsetX = 0;
+        offsetY = (rect.height - renderedH) / 2;
+      } else {
+        // Video taller than element — pillarbox left/right
+        renderedH = rect.height;
+        renderedW = rect.height * videoAspect;
+        offsetX = (rect.width - renderedW) / 2;
+        offsetY = 0;
+      }
+
+      const x = (event.clientX - rect.left - offsetX) / renderedW;
+      const y = (event.clientY - rect.top - offsetY) / renderedH;
 
       return {
         x: Math.max(0, Math.min(1, x)),
@@ -201,6 +263,18 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
             overflow: 'hidden',
           }}
         >
+          {/* Last frame snapshot (shown when video has no new frames) */}
+          <canvas
+            ref={canvasRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              zIndex: 0,
+            }}
+          />
           <video
             ref={videoRef}
             autoPlay
@@ -211,11 +285,13 @@ export const RemoteScreen: React.FC<RemoteScreenProps> = ({
             onPointerMove={handlePointerMove}
             onPointerLeave={handlePointerLeave}
             style={{
+              position: 'relative',
               width: '100%',
               height: '100%',
               objectFit: 'contain',
               touchAction: 'none',
               cursor: 'pointer',
+              zIndex: 1,
             }}
           />
           {!stream && (
