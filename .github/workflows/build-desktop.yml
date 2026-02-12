@@ -1,0 +1,142 @@
+name: Build Desktop App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Update version
+        run: |
+          npm version ${{ inputs.version }} --no-git-tag-version
+          cd desktop && npm version ${{ inputs.version }} --no-git-tag-version
+
+      - name: Build Web SDK
+        run: yarn build:sdk
+
+      - name: Build Desktop app
+        working-directory: desktop
+        run: npx tsc && npx vite build
+
+      - name: Build macOS installers (arm64 + x64)
+        working-directory: desktop
+        run: npx electron-builder --mac --arm64 --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Update version
+        run: |
+          npm version ${{ inputs.version }} --no-git-tag-version
+          cd desktop && npm version ${{ inputs.version }} --no-git-tag-version
+
+      - name: Build Web SDK
+        run: yarn build:sdk
+
+      - name: Build Desktop app
+        working-directory: desktop
+        run: npx tsc && npx vite build
+
+      - name: Build Windows installers
+        working-directory: desktop
+        run: npx electron-builder --win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Update version and push
+        run: |
+          npm version ${{ inputs.version }} --no-git-tag-version
+          cd desktop && npm version ${{ inputs.version }} --no-git-tag-version
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json desktop/package.json
+          git commit -m "chore: bump desktop version to v${{ inputs.version }}"
+          git push
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-macos
+          path: artifacts/macos
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: desktop-windows
+          path: artifacts/windows
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            --title "Remote Puppet Desktop v${{ inputs.version }}" \
+            --generate-notes \
+            artifacts/macos/* \
+            artifacts/windows/*
