@@ -37,11 +37,11 @@ jobs:
 
       - name: Build Desktop app
         working-directory: desktop
-        run: yarn exec tsc && yarn exec vite build
+        run: yarn run tsc && yarn run vite build
 
       - name: Build macOS installers (arm64 + x64)
         working-directory: desktop
-        run: yarn exec electron-builder --mac --arm64 --x64
+        run: yarn run electron-builder --mac --arm64 --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -79,11 +79,11 @@ jobs:
 
       - name: Build Desktop app
         working-directory: desktop
-        run: yarn exec tsc && yarn exec vite build
+        run: yarn run tsc && yarn run vite build
 
       - name: Build Windows installers
         working-directory: desktop
-        run: yarn exec electron-builder --win
+        run: yarn run electron-builder --win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
