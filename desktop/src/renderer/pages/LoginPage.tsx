@@ -147,7 +147,7 @@ export const LoginPage: React.FC = () => {
               type="url"
               value={serverUrl}
               onChange={(e) => setServerUrl(e.target.value)}
-              placeholder="https://example.com:8080"
+              placeholder="https://hoplin.cloud"
               colors={colors}
             />
           </FormField>
@@ -161,7 +161,7 @@ export const LoginPage: React.FC = () => {
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="John"
+                  placeholder="JunHo"
                   colors={colors}
                 />
               </FormField>
@@ -171,7 +171,7 @@ export const LoginPage: React.FC = () => {
                   type="text"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Doe"
+                  placeholder="Yoon"
                   colors={colors}
                 />
               </FormField>
@@ -185,7 +185,7 @@ export const LoginPage: React.FC = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@company.com"
+              placeholder="your@email.here"
               required
               colors={colors}
             />

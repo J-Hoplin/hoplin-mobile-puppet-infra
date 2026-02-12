@@ -1165,7 +1165,7 @@ export const DevicesPage: React.FC = () => {
                     type="text"
                     value={newDeviceName}
                     onChange={(e) => setNewDeviceName(e.target.value)}
-                    placeholder="Galaxy S24, Pixel 8 Pro..."
+                    placeholder="기기 추가"
                     autoFocus
                     style={{
                       width: '100%',
