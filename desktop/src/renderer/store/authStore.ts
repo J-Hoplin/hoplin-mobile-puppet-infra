@@ -24,7 +24,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       token: null,
       user: null,
-      serverUrl: 'http://localhost:3000',
+      serverUrl: 'https://hoplin.cloud',
       isAuthenticated: false,
 
       setAuth: (token, user) =>
